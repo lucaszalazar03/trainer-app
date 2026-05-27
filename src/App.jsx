@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
+import Clientes from './Clientes'
 
 function App() {
   const [email, setEmail] = useState('')
@@ -31,12 +32,14 @@ function App() {
 
   if (session) {
     return (
-      <div style={{ maxWidth: 400, margin: '100px auto', padding: 24 }}>
-        <h2>Trainer App</h2>
-        <p>Bienvenido, {session.user.email}</p>
-        <button onClick={handleLogout} style={{ padding: '8px 24px' }}>
-          Cerrar sesión
-        </button>
+      <div style={{ maxWidth: 480, margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #ddd' }}>
+          <strong>Trainer App</strong>
+          <button onClick={handleLogout} style={{ padding: '4px 12px', fontSize: 12 }}>
+            Salir
+          </button>
+        </div>
+        <Clientes session={session} />
       </div>
     )
   }

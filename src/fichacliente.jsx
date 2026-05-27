@@ -1,0 +1,93 @@
+import { useState } from 'react'
+import { supabase } from './supabase'
+import Planes from './Planes'
+
+function FichaCliente({ cliente, onVolver, onActualizar, session }) {
+  const [vista, setVista] = useState('ficha')
+  const [editando, setEditando] = useState(false)
+  const [nombre, setNombre] = useState(cliente.nombre || '')
+  const [apellido, setApellido] = useState(cliente.apellido || '')
+  const [email, setEmail] = useState(cliente.email || '')
+  const [telefono, setTelefono] = useState(cliente.telefono || '')
+  const [objetivo, setObjetivo] = useState(cliente.objetivo || '')
+  const [perfil, setPerfil] = useState(cliente.perfil || 'recreacional')
+  const [notas, setNotas] = useState(cliente.notas || '')
+  const [guardando, setGuardando] = useState(false)
+
+  const guardar = async () => {
+    setGuardando(true)
+    const { error } = await supabase
+      .from('clientes')
+      .update({ nombre, apellido, email, telefono, objetivo, perfil, notas })
+      .eq('id', cliente.id)
+    if (!error) {
+      setEditando(false)
+      onActualizar()
+    }
+    setGuardando(false)
+  }
+
+  const eliminar = async () => {
+    if (!window.confirm('Eliminar a ' + cliente.nombre + '?')) return
+    await supabase.from('clientes').delete().eq('id', cliente.id)
+    onVolver()
+  }
+
+  return (
+    <div style={{ padding: 16 }}>
+      <button onClick={onVolver} style={{ marginBottom: 16, padding: '4px 12px', fontSize: 12 }}>
+        Volver
+      </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>{cliente.nombre} {cliente.apellido}</h2>
+        <span style={{ background: cliente.perfil === 'atleta' ? '#e3f2fd' : '#f3e5f5', padding: '4px 10px', borderRadius: 12, fontSize: 12 }}>
+          {cliente.perfil}
+        </span>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <button onClick={() => setVista('ficha')} style={{ padding: '6px 16px', background: vista === 'ficha' ? '#000' : '#fff', color: vista === 'ficha' ? '#fff' : '#000', border: '1px solid #000', borderRadius: 4 }}>Ficha</button>
+        <button onClick={() => setVista('planes')} style={{ padding: '6px 16px', background: vista === 'planes' ? '#000' : '#fff', color: vista === 'planes' ? '#fff' : '#000', border: '1px solid #000', borderRadius: 4 }}>Planes</button>
+      </div>
+      {vista === 'ficha' && (
+        <>
+          {!editando ? (
+            <div>
+              <div style={{ background: '#f5f5f5', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+                <p style={{ margin: '0 0 8px' }}><strong>Email:</strong> {cliente.email || '-'}</p>
+                <p style={{ margin: '0 0 8px' }}><strong>Telefono:</strong> {cliente.telefono || '-'}</p>
+                <p style={{ margin: '0 0 8px' }}><strong>Objetivo:</strong> {cliente.objetivo || '-'}</p>
+                <p style={{ margin: 0 }}><strong>Notas:</strong> {cliente.notas || '-'}</p>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setEditando(true)} style={{ padding: '8px 16px' }}>Editar</button>
+                <button onClick={eliminar} style={{ padding: '8px 16px', color: 'red', background: 'none', border: '1px solid red' }}>Eliminar</button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <input placeholder='Nombre' value={nombre} onChange={e => setNombre(e.target.value)} style={{ display: 'block', width: '100%', marginBottom: 8, padding: 8 }} />
+              <input placeholder='Apellido' value={apellido} onChange={e => setApellido(e.target.value)} style={{ display: 'block', width: '100%', marginBottom: 8, padding: 8 }} />
+              <input placeholder='Email' value={email} onChange={e => setEmail(e.target.value)} style={{ display: 'block', width: '100%', marginBottom: 8, padding: 8 }} />
+              <input placeholder='Telefono' value={telefono} onChange={e => setTelefono(e.target.value)} style={{ display: 'block', width: '100%', marginBottom: 8, padding: 8 }} />
+              <input placeholder='Objetivo' value={objetivo} onChange={e => setObjetivo(e.target.value)} style={{ display: 'block', width: '100%', marginBottom: 8, padding: 8 }} />
+              <select value={perfil} onChange={e => setPerfil(e.target.value)} style={{ display: 'block', width: '100%', marginBottom: 8, padding: 8 }}>
+                <option value='recreacional'>Recreacional</option>
+                <option value='atleta'>Atleta</option>
+              </select>
+              <textarea placeholder='Notas' value={notas} onChange={e => setNotas(e.target.value)} style={{ display: 'block', width: '100%', marginBottom: 12, padding: 8, minHeight: 80 }} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={guardar} disabled={guardando} style={{ padding: '8px 16px' }}>{guardando ? 'Guardando...' : 'Guardar'}</button>
+                <button onClick={() => setEditando(false)} style={{ padding: '8px 16px' }}>Cancelar</button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+      {vista === 'planes' && (
+        <Planes session={session} clienteId={cliente.id} clienteNombre={cliente.nombre} />
+      )}
+    </div>
+  )
+}
+
+export default FichaCliente
