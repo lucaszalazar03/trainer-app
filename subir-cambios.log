@@ -1,0 +1,282 @@
+=== ANTES ===
+ M .gitignore
+ M README.md
+ D fix.js
+ D index.html
+ M package-lock.json
+ M package.json
+ D src/App.css
+ D src/App.jsx
+ D src/assets/hero.png
+ D src/assets/react.svg
+ D src/assets/vite.svg
+ D src/clientes.jsx
+ D src/fichacliente.jsx
+ D src/index.css
+ D src/main.jsx
+ D src/planes.jsx
+ D src/supabase.js
+ D vite.config.js
+?? .vercelignore
+?? AGENTS.md
+?? CLAUDE.md
+?? eslint.config.mjs
+?? next.config.ts
+?? postcss.config.mjs
+?? public/file.svg
+?? public/globe.svg
+?? public/icons/
+?? public/manifest.json
+?? public/next.svg
+?? public/sw.js
+?? public/vercel.svg
+?? public/window.svg
+?? qr-zperformance.png
+?? revisar-git.bat
+?? src/app/
+?? src/components/
+?? src/lib/
+?? src/proxy.ts
+?? subir-cambios.bat
+?? subir-cambios.log
+?? tsconfig.json
+?? vercel.json
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.vercelignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CLAUDE.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'eslint.config.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'next.config.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'postcss.config.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'public/manifest.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'public/sw.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/alumno/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/alumno/checkin/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/alumno/entrenar/[sessionId]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/alumno/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/alumno/progreso/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/alumnos/[id]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/alumnos/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/alumnos/nuevo/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/alumnos/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/alumnos/rutina-actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/biblioteca/[id]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/biblioteca/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/biblioteca/nuevo/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/biblioteca/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/biblioteca/plantillas/[id]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/biblioteca/plantillas/nueva/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/biblioteca/templates-actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/bienvenida/Bienvenida.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/bienvenida/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/calendario/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/configuracion/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/configuracion/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/dashboard/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/dashboard/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/equipos/[id]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/equipos/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/equipos/nuevo/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/equipos/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/globals.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/layout.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/login/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/login/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/manifest.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/programas/[id]/agrupar/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/programas/[id]/aplicar-plantilla/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/programas/[id]/editar/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/programas/[id]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/programas/[id]/sesiones/[sessionId]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/programas/actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/programas/ejercicios/agregar/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/programas/nuevo/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/programas/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/programas/session-actions.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/AddExerciseModal.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/AlumnoShell.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/AthleteFields.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Badge.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/CategoryChip.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/CoachShell.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/ComingSoon.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/ConfirmSubmitButton.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Crumbs.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/ExerciseLibrary.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/ExerciseList.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/ExerciseRowEditor.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/ExerciseVideo.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/ExerciseVideoCard.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/FormField.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Icon.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/InstallPrompt.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/NotificationsOptIn.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/RangeField.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/RegisterServiceWorker.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/SessionList.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/SplashScreen.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/SubmitButton.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/TrainingSession (1).tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/TrainingSession.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/VideoUploadField.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/actions/auth.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/actions/push.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/actions/require-student.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/actions/require-user.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/actions/role.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/constants.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/date.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/db/direct.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/db/exercises.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/db/friendly-error.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/supabase/client.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/supabase/middleware.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/supabase/server.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/supabase/types.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/supabase/verified-user.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/use-install-prompt.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/video.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/proxy.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tsconfig.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'vercel.json', LF will be replaced by CRLF the next time Git touches it
+=== COMMIT ===
+[main b885f36] Biblioteca: lista completa, busqueda instantanea y borrado rapido
+ 126 files changed, 19682 insertions(+), 2075 deletions(-)
+ create mode 100644 .vercelignore
+ create mode 100644 AGENTS.md
+ create mode 100644 CLAUDE.md
+ create mode 100644 eslint.config.mjs
+ delete mode 100644 fix.js
+ delete mode 100644 index.html
+ create mode 100644 next.config.ts
+ create mode 100644 postcss.config.mjs
+ create mode 100644 public/file.svg
+ create mode 100644 public/globe.svg
+ create mode 100644 public/icons/apple-touch-icon.png
+ create mode 100644 public/icons/icon-192.png
+ create mode 100644 public/icons/icon-512-maskable.png
+ create mode 100644 public/icons/icon-512.png
+ create mode 100644 public/manifest.json
+ create mode 100644 public/next.svg
+ create mode 100644 public/sw.js
+ create mode 100644 public/vercel.svg
+ create mode 100644 public/window.svg
+ create mode 100644 qr-zperformance.png
+ delete mode 100644 src/App.css
+ delete mode 100644 src/App.jsx
+ create mode 100644 src/app/alumno/actions.ts
+ create mode 100644 src/app/alumno/checkin/page.tsx
+ create mode 100644 src/app/alumno/entrenar/[sessionId]/page.tsx
+ create mode 100644 src/app/alumno/page.tsx
+ create mode 100644 src/app/alumno/progreso/page.tsx
+ create mode 100644 src/app/alumnos/[id]/page.tsx
+ create mode 100644 src/app/alumnos/actions.ts
+ create mode 100644 src/app/alumnos/nuevo/page.tsx
+ create mode 100644 src/app/alumnos/page.tsx
+ create mode 100644 src/app/alumnos/rutina-actions.ts
+ create mode 100644 src/app/biblioteca/[id]/page.tsx
+ create mode 100644 src/app/biblioteca/actions.ts
+ create mode 100644 src/app/biblioteca/nuevo/page.tsx
+ create mode 100644 src/app/biblioteca/page.tsx
+ create mode 100644 src/app/biblioteca/plantillas/[id]/page.tsx
+ create mode 100644 src/app/biblioteca/plantillas/nueva/page.tsx
+ create mode 100644 src/app/biblioteca/templates-actions.ts
+ create mode 100644 src/app/bienvenida/Bienvenida.tsx
+ create mode 100644 src/app/bienvenida/page.tsx
+ create mode 100644 src/app/calendario/page.tsx
+ create mode 100644 src/app/configuracion/actions.ts
+ create mode 100644 src/app/configuracion/page.tsx
+ create mode 100644 src/app/dashboard/actions.ts
+ create mode 100644 src/app/dashboard/page.tsx
+ create mode 100644 src/app/equipos/[id]/page.tsx
+ create mode 100644 src/app/equipos/actions.ts
+ create mode 100644 src/app/equipos/nuevo/page.tsx
+ create mode 100644 src/app/equipos/page.tsx
+ create mode 100644 src/app/favicon.ico
+ create mode 100644 src/app/globals.css
+ create mode 100644 src/app/layout.tsx
+ create mode 100644 src/app/login/actions.ts
+ create mode 100644 src/app/login/page.tsx
+ create mode 100644 src/app/manifest.ts
+ create mode 100644 src/app/page.tsx
+ create mode 100644 src/app/programas/[id]/agrupar/page.tsx
+ create mode 100644 src/app/programas/[id]/aplicar-plantilla/page.tsx
+ create mode 100644 src/app/programas/[id]/editar/page.tsx
+ create mode 100644 src/app/programas/[id]/page.tsx
+ create mode 100644 src/app/programas/[id]/sesiones/[sessionId]/page.tsx
+ create mode 100644 src/app/programas/actions.ts
+ create mode 100644 src/app/programas/ejercicios/agregar/page.tsx
+ create mode 100644 src/app/programas/nuevo/page.tsx
+ create mode 100644 src/app/programas/page.tsx
+ create mode 100644 src/app/programas/session-actions.ts
+ delete mode 100644 src/assets/hero.png
+ delete mode 100644 src/assets/react.svg
+ delete mode 100644 src/assets/vite.svg
+ delete mode 100644 src/clientes.jsx
+ create mode 100644 src/components/AddExerciseModal.tsx
+ create mode 100644 src/components/AlumnoShell.tsx
+ create mode 100644 src/components/AthleteFields.tsx
+ create mode 100644 src/components/Badge.tsx
+ create mode 100644 src/components/CategoryChip.tsx
+ create mode 100644 src/components/CoachShell.tsx
+ create mode 100644 src/components/ComingSoon.tsx
+ create mode 100644 src/components/ConfirmSubmitButton.tsx
+ create mode 100644 src/components/Crumbs.tsx
+ create mode 100644 src/components/ExerciseLibrary.tsx
+ create mode 100644 src/components/ExerciseList.tsx
+ create mode 100644 src/components/ExerciseRowEditor.tsx
+ create mode 100644 src/components/ExerciseVideo.tsx
+ create mode 100644 src/components/ExerciseVideoCard.tsx
+ create mode 100644 src/components/FormField.tsx
+ create mode 100644 src/components/Icon.tsx
+ create mode 100644 src/components/InstallPrompt.tsx
+ create mode 100644 src/components/NotificationsOptIn.tsx
+ create mode 100644 src/components/RangeField.tsx
+ create mode 100644 src/components/RegisterServiceWorker.tsx
+ create mode 100644 src/components/SessionList.tsx
+ create mode 100644 src/components/SplashScreen.tsx
+ create mode 100644 src/components/SubmitButton.tsx
+ create mode 100644 src/components/TrainingSession.tsx
+ create mode 100644 src/components/VideoUploadField.tsx
+ delete mode 100644 src/fichacliente.jsx
+ delete mode 100644 src/index.css
+ create mode 100644 src/lib/actions/auth.ts
+ create mode 100644 src/lib/actions/push.ts
+ create mode 100644 src/lib/actions/require-student.ts
+ create mode 100644 src/lib/actions/require-user.ts
+ create mode 100644 src/lib/actions/role.ts
+ create mode 100644 src/lib/constants.ts
+ create mode 100644 src/lib/date.ts
+ create mode 100644 src/lib/db/direct.ts
+ create mode 100644 src/lib/db/exercises.ts
+ create mode 100644 src/lib/db/friendly-error.ts
+ create mode 100644 src/lib/supabase/client.ts
+ create mode 100644 src/lib/supabase/middleware.ts
+ create mode 100644 src/lib/supabase/server.ts
+ create mode 100644 src/lib/supabase/types.ts
+ create mode 100644 src/lib/supabase/verified-user.ts
+ create mode 100644 src/lib/use-install-prompt.ts
+ create mode 100644 src/lib/video.ts
+ delete mode 100644 src/main.jsx
+ delete mode 100644 src/planes.jsx
+ create mode 100644 src/proxy.ts
+ delete mode 100644 src/supabase.js
+ create mode 100644 tsconfig.json
+ create mode 100644 vercel.json
+ delete mode 100644 vite.config.js
+=== PUSH ===
+To https://github.com/lucaszalazar03/trainer-app.git
+   5031b49..b885f36  main -> main
+=== DESPUES ===
+## main...origin/main
+?? revisar-git.bat
+?? "src/components/TrainingSession (1).tsx"
+?? subir-cambios.bat
+?? subir-cambios.log
+b885f36 Biblioteca: lista completa, busqueda instantanea y borrado rapido
+5031b49 planes en progreso
+778aeff setup base: react + supabase + auth
