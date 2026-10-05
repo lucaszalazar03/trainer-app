@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireStudent } from "@/lib/actions/require-student";
-import { sendPushToUser } from "@/lib/actions/push";
+import { sendPushToUser } from "@/lib/push-server";
 import { inicioDeHoyArgentina } from "@/lib/date";
 
 export async function logTraining(

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/actions/require-user";
-import { sendPushToUser } from "@/lib/actions/push";
+import { sendPushToUser } from "@/lib/push-server";
 
 export async function createProgram(formData: FormData) {
   const { supabase, user } = await requireUser();

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/actions/require-user";
-import { sendPushToUser } from "@/lib/actions/push";
+import { sendPushToUser } from "@/lib/push-server";
 
 // edad/altura/peso viajan como texto en el FormData (son inputs type="number"
 // pero eso no cambia el tipo en el cliente) — se parsean acá y, si vienen

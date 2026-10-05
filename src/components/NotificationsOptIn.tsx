@@ -45,6 +45,32 @@ function detectStatus(): Status {
   return "default";
 }
 
+/**
+ * Se asegura de que este dispositivo tenga una suscripción push activa y
+ * que esté guardada en la base. Exportada para reusarla desde el botón de
+ * prueba en Configuración. Devuelve true si quedó guardada.
+ */
+export async function ensurePushSubscription(): Promise<boolean> {
+  try {
+    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!publicKey || !("serviceWorker" in navigator)) return false;
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    }
+    const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+    if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return false;
+    await subscribeToPush({ endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function NotificationsOptIn() {
   const [status, setStatus] = useState<Status>("loading");
   const [busy, setBusy] = useState(false);
@@ -53,8 +79,14 @@ export function NotificationsOptIn() {
     // Sólo corre una vez al montar, en el cliente: lee capacidades del
     // navegador (Notification/PushManager/standalone) que no existen
     // durante el render en el servidor.
+    const st = detectStatus();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStatus(detectStatus());
+    setStatus(st);
+    // Si ya había permiso, re-sincronizamos la suscripción en cada apertura:
+    // el celular (sobre todo iPhone) puede renovarla o perderla, y antes la
+    // app nunca la volvía a guardar — las notificaciones dejaban de llegar
+    // sin aviso.
+    if (st === "granted") void ensurePushSubscription();
   }, []);
 
   async function activar() {
@@ -72,19 +104,7 @@ export function NotificationsOptIn() {
         return;
       }
 
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
-      });
-
-      const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
-      if (json.endpoint && json.keys?.p256dh && json.keys?.auth) {
-        await subscribeToPush({
-          endpoint: json.endpoint,
-          keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-        });
-      }
+      await ensurePushSubscription();
 
       setStatus("granted");
     } catch {

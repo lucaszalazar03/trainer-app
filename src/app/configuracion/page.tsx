@@ -3,6 +3,7 @@ import { TextField, ErrorBanner, SuccessBanner } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { requireUser } from "@/lib/actions/require-user";
 import { updateProfile, changePassword } from "./actions";
+import { PushTestCard } from "@/components/PushTestCard";
 
 const SAVED_MESSAGES: Record<string, string> = {
   perfil: "Perfil actualizado.",
@@ -31,6 +32,8 @@ export default async function ConfiguracionPage({
       <div style={{ maxWidth: 420 }}>
         <ErrorBanner message={error} />
         {saved && <SuccessBanner show={saved} message={SAVED_MESSAGES[saved] ?? "Guardado."} />}
+
+        <PushTestCard />
 
         <div className="card card-pad" style={{ marginBottom: 20 }}>
           <div className="section-h" style={{ marginTop: 0 }}>
