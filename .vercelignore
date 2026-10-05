@@ -1,0 +1,6 @@
+# Carpeta donde a veces se guardan los archivos descargados del chat de
+# Claude — no es parte del proyecto. Si queda acá adentro, "vercel --prod"
+# la sube igual (el CLI no respeta .gitignore, solo .vercelignore) y
+# TypeScript la incluye en el build, rompiéndolo porque no encuentra los
+# imports relativos (Icon, SubmitButton, etc.) desde ahí.
+Claude outputs/
