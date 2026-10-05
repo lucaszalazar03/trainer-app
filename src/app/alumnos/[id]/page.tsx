@@ -31,7 +31,7 @@ export default async function AlumnoDetailPage({
     supabase
       .from("students")
       .select(
-        "id, nombre, email, objetivo, estado, notas, semana_actual, programa_id, edad, altura_cm, peso_kg, deporte, posicion"
+        "id, nombre, email, objetivo, estado, notas, semana_actual, programa_id, edad, altura_cm, peso_kg, deporte, posicion, nuevo"
       )
       .eq("id", id)
       .maybeSingle(),
@@ -64,6 +64,11 @@ export default async function AlumnoDetailPage({
   ]);
 
   if (!student) notFound();
+
+  // Alumno que se registró solo: al abrir su ficha deja de figurar como "Nuevo".
+  if (student.nuevo) {
+    await supabase.from("students").update({ nuevo: false }).eq("id", id);
+  }
 
   // Agrupa por ejercicio conservando el orden (ya viene fecha desc), y se
   // queda con los últimos 5 valores de cada uno para no saturar la tarjeta.

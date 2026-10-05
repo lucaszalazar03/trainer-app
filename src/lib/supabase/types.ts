@@ -865,6 +865,7 @@ export type Database = {
           objetivo: string | null
           peso_kg: number | null
           posicion: string | null
+          nuevo: boolean
           programa_id: string | null
           semana_actual: number
           user_id: string | null
@@ -883,6 +884,7 @@ export type Database = {
           objetivo?: string | null
           peso_kg?: number | null
           posicion?: string | null
+          nuevo?: boolean
           programa_id?: string | null
           semana_actual?: number
           user_id?: string | null
@@ -901,6 +903,7 @@ export type Database = {
           objetivo?: string | null
           peso_kg?: number | null
           posicion?: string | null
+          nuevo?: boolean
           programa_id?: string | null
           semana_actual?: number
           user_id?: string | null

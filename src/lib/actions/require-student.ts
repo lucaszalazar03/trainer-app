@@ -22,7 +22,7 @@ export async function requireStudent() {
   if (!student) {
     redirect(
       `/login?error=${encodeURIComponent(
-        "Tu cuenta todavía no está vinculada a ningún alumno. Pedile a tu coach que te cargue con este email."
+        "No pudimos encontrar tu ficha de alumno. Escribile a tu coach para que lo revise."
       )}`
     );
   }

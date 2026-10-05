@@ -8,7 +8,8 @@ export default async function AlumnosPage() {
 
   const { data: students } = await supabase
     .from("students")
-    .select("id, nombre, estado, objetivo, programa_id, semana_actual")
+    .select("id, nombre, estado, objetivo, programa_id, semana_actual, nuevo")
+    .order("nuevo", { ascending: false })
     .order("nombre");
 
   return (
@@ -47,7 +48,10 @@ export default async function AlumnosPage() {
                   </div>
                 </div>
               </div>
-              <span className={`badge ${s.estado === "Activo" ? "green" : "neutral"}`}>{s.estado}</span>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                {s.nuevo && <span className="badge blue">Nuevo</span>}
+                <span className={`badge ${s.estado === "Activo" ? "green" : "neutral"}`}>{s.estado}</span>
+              </div>
             </Link>
           ))}
         </div>

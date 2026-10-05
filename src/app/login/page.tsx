@@ -14,11 +14,11 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
-  const [tab, setTab] = useState<"in" | "up">("in");
-  const [role, setRole] = useState<"coach" | "student">("coach");
   const params = useSearchParams();
+  const [tab, setTab] = useState<"in" | "up">(params.get("tab") === "up" ? "up" : "in");
   const error = params.get("error");
   const checkEmail = params.get("check_email");
+  const confirmed = params.get("confirmed");
 
   return (
     <main
@@ -62,8 +62,11 @@ function LoginForm() {
 
         {error && <div className="banner danger">{decodeURIComponent(error)}</div>}
         {checkEmail && (
-          <div className="banner success">Cuenta creada. Revisá tu email para confirmarla y después iniciá sesión.</div>
+          <div className="banner success">
+            ¡Listo! Te mandamos un mail. Abrilo y tocá el link para confirmar tu cuenta (si no lo ves, revisá Spam).
+          </div>
         )}
+        {confirmed && <div className="banner success">Mail confirmado. Ya podés ingresar con tu email y contraseña.</div>}
 
         {tab === "in" ? (
           <form action={signIn} style={{ display: "grid" }}>
@@ -75,26 +78,23 @@ function LoginForm() {
           </form>
         ) : (
           <>
-            <div className="chip-row" style={{ marginBottom: 4 }}>
-              <button type="button" className={`chip ${role === "coach" ? "active" : ""}`} onClick={() => setRole("coach")}>
-                Soy coach
-              </button>
-              <button type="button" className={`chip ${role === "student" ? "active" : ""}`} onClick={() => setRole("student")}>
-                Soy alumno
-              </button>
-            </div>
-            {role === "student" && (
-              <p style={{ color: "var(--text-faint)", fontSize: 12, margin: "0 0 14px" }}>
-                Usá el mismo email que le diste a tu coach — así se vincula tu cuenta con tus datos.
-              </p>
-            )}
+            <p style={{ color: "var(--text-faint)", fontSize: 12, margin: "0 0 14px" }}>
+              Creá tu cuenta de alumno. Después de confirmar tu mail ya podés entrar a la app.
+            </p>
             <form action={signUp} style={{ display: "grid" }}>
-              <input type="hidden" name="role" value={role} />
-              {role === "coach" && <Field label="Nombre" name="nombre" type="text" required />}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <Field label="Nombre" name="nombre" type="text" required />
+                <Field label="Apellido" name="apellido" type="text" required />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                <Field label="Edad" name="edad" type="number" min={1} max={119} inputMode="numeric" />
+                <Field label="Altura (cm)" name="altura_cm" type="number" min={1} max={249} inputMode="numeric" />
+                <Field label="Peso (kg)" name="peso_kg" type="text" inputMode="decimal" />
+              </div>
               <Field label="Email" name="email" type="email" required />
               <Field label="Contraseña" name="password" type="password" required minLength={6} />
               <SubmitButton className="btn primary block-w" style={{ marginTop: 6 }}>
-                {role === "coach" ? "Crear cuenta de coach" : "Crear cuenta de alumno"}
+                Crear cuenta
               </SubmitButton>
             </form>
           </>
@@ -138,11 +138,29 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   );
 }
 
-function Field(props: { label: string; name: string; type: string; required?: boolean; minLength?: number }) {
+function Field(props: {
+  label: string;
+  name: string;
+  type: string;
+  required?: boolean;
+  minLength?: number;
+  min?: number;
+  max?: number;
+  inputMode?: "numeric" | "decimal";
+}) {
   return (
     <div className="field">
       <span className="field-label">{props.label}</span>
-      <input name={props.name} type={props.type} required={props.required} minLength={props.minLength} />
+      <input
+        name={props.name}
+        type={props.type}
+        required={props.required}
+        minLength={props.minLength}
+        min={props.min}
+        max={props.max}
+        inputMode={props.inputMode}
+        style={{ width: "100%", minWidth: 0 }}
+      />
     </div>
   );
 }

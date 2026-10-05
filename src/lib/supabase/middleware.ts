@@ -41,6 +41,16 @@ export async function updateSession(request: NextRequest) {
   const user = data?.claims ?? null;
 
   const path = request.nextUrl.pathname;
+
+  // Link de confirmación de mail: si Supabase devuelve al alumno a cualquier
+  // URL del sitio (por ej. la raíz) con ?code= o ?token_hash=, lo pasamos
+  // por /auth/callback para abrirle la sesión.
+  const sp = request.nextUrl.searchParams;
+  if (!path.startsWith("/auth/") && (sp.has("code") || sp.has("token_hash"))) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/callback";
+    return NextResponse.redirect(url);
+  }
   // /bienvenida es la pantalla pública de "bajate la app" — se comparte
   // como link, así que tiene que quedar accesible sin login igual que
   // /login y /auth.

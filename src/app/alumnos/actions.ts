@@ -21,6 +21,26 @@ export async function createStudent(formData: FormData) {
   const nombre = String(formData.get("nombre") || "").trim();
   if (!nombre) redirect("/alumnos/nuevo?error=El nombre es obligatorio");
 
+  // Si ya existe un alumno con este email (por ejemplo, porque se registró
+  // solo desde la app), no se crea un duplicado: se abre su ficha para
+  // completarla.
+  const emailNuevo = String(formData.get("email") || "").trim().toLowerCase();
+  if (emailNuevo) {
+    const { data: existente } = await supabase
+      .from("students")
+      .select("id")
+      .eq("coach_id", user.id)
+      .ilike("email", emailNuevo.replace(/[\\%_]/g, (c) => `\\${c}`))
+      .maybeSingle();
+    if (existente) {
+      redirect(
+        `/alumnos/${existente.id}?error=${encodeURIComponent(
+          "Ya tenés un alumno con ese email (puede que se haya registrado solo). Completá sus datos acá."
+        )}`
+      );
+    }
+  }
+
   const { data, error } = await supabase
     .from("students")
     .insert({

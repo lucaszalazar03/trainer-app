@@ -27,6 +27,6 @@ export async function resolveHome(supabase: SupabaseServerClient, userId: string
   if (retried) return "/alumno";
 
   return `/login?error=${encodeURIComponent(
-    "No encontramos tu cuenta todavía. Si sos alumno, pedile a tu coach que te cargue con este mismo email."
+    "No pudimos encontrar tu ficha de alumno. Escribile a tu coach para que lo revise."
   )}`;
 }
