@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/actions/require-user";
 import { sendPushToUser } from "@/lib/push-server";
+import { getDirectSql } from "@/lib/db/direct";
+import { friendlyDbError } from "@/lib/db/friendly-error";
+import { copySessionsExact } from "@/lib/db/copy-sessions";
 import type { createClient } from "@/lib/supabase/server";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -74,147 +77,41 @@ export async function createPersonalProgram(studentId: string, formData: FormDat
 // ---------- Clonar un programa entero (semanas → sesiones → entrada en
 // calor y bloques → ejercicios) hacia uno nuevo ----------
 
+// ---------- Clonar un programa entero, EXACTAMENTE igual ----------
+// Antes se copiaba nivel por nivel por la API REST, ignorando errores: si
+// algo se cortaba, la copia quedaba incompleta sin avisar. Ahora va todo en
+// UNA transacción por conexión directa (semanas, sesiones con día/orden,
+// entrada en calor, bloques con descanso/color/descripción y ejercicios con
+// series/reps): o se copia todo, o nada. Ver copySessionsExact.
 async function cloneProgram(
-  supabase: SupabaseServerClient,
+  _supabase: SupabaseServerClient,
   sourceProgramId: string,
   opts: { coachId: string; ownerStudentId: string | null; nombre: string }
 ): Promise<string | null> {
-  const { data: source } = await supabase
-    .from("programs")
-    .select("descripcion, objetivo, nivel, duracion_semanas")
-    .eq("id", sourceProgramId)
-    .single();
-
-  const { data: copy, error } = await supabase
-    .from("programs")
-    .insert({
-      coach_id: opts.coachId,
-      owner_student_id: opts.ownerStudentId,
-      nombre: opts.nombre,
-      descripcion: source?.descripcion ?? null,
-      objetivo: source?.objetivo ?? "General",
-      nivel: source?.nivel ?? "Intermedio",
-      duracion_semanas: source?.duracion_semanas ?? 8,
-    })
-    .select("id")
-    .single();
-
-  if (error || !copy) return null;
-
-  // Antes esto hacía un viaje al server por cada semana, por cada sesión de
-  // cada semana, y por cada bloque de cada sesión (más el select de sus
-  // ejercicios) — con un programa como el de rugby de Lucas (3 semanas, 9
-  // sesiones, 36 bloques) eran más de 100 ida-y-vuelta secuenciales, lo que
-  // es justo lo que hacía sentir "importar de mi biblioteca" lentísimo.
-  // Ahora se trae y se inserta cada nivel entero de una sola vez (todas las
-  // semanas juntas, todas las sesiones juntas, etc.), así son un puñado de
-  // consultas en vez de cientos. Para mapear el id viejo de cada fila a su
-  // copia nueva nos apoyamos en que un INSERT ... RETURNING de Postgres
-  // devuelve las filas en el mismo orden en que se mandaron — no hace falta
-  // pedirlas de nuevo una por una para saber qué id le tocó a cada una.
-  const { data: weeks } = await supabase
-    .from("weeks")
-    .select("id, numero")
-    .eq("program_id", sourceProgramId)
-    .order("numero");
-  if (!weeks?.length) return copy.id;
-
-  const { data: newWeeks } = await supabase
-    .from("weeks")
-    .insert(weeks.map((w) => ({ program_id: copy.id, numero: w.numero })))
-    .select("id");
-  if (!newWeeks?.length) return copy.id;
-
-  const weekIdMap = new Map(weeks.map((w, i) => [w.id, newWeeks[i].id]));
-
-  const { data: sessions } = await supabase
-    .from("sessions")
-    .select("id, week_id, nombre, objetivo, movilidad, orden")
-    .in("week_id", weeks.map((w) => w.id))
-    .order("orden");
-  if (!sessions?.length) return copy.id;
-
-  const { data: newSessions } = await supabase
-    .from("sessions")
-    .insert(
-      sessions.map((s) => ({
-        week_id: weekIdMap.get(s.week_id)!,
-        nombre: s.nombre,
-        objetivo: s.objetivo,
-        movilidad: s.movilidad,
-        orden: s.orden,
-      }))
-    )
-    .select("id");
-  if (!newSessions?.length) return copy.id;
-
-  const sessionIdMap = new Map(sessions.map((s, i) => [s.id, newSessions[i].id]));
-  const sessionIds = sessions.map((s) => s.id);
-
-  // Entrada en calor y bloques no dependen entre sí — en paralelo en vez de
-  // uno atrás del otro.
-  await Promise.all([
-    (async () => {
-      const { data: warmups } = await supabase
-        .from("warmup_exercises")
-        .select("session_id, exercise_id, series, reps, orden")
-        .in("session_id", sessionIds);
-      if (!warmups?.length) return;
-
-      await supabase.from("warmup_exercises").insert(
-        warmups.map((w) => ({
-          session_id: sessionIdMap.get(w.session_id)!,
-          exercise_id: w.exercise_id,
-          series: w.series,
-          reps: w.reps,
-          orden: w.orden,
-        }))
-      );
-    })(),
-    (async () => {
-      const { data: blocks } = await supabase
-        .from("blocks")
-        .select("id, session_id, nombre, color, descanso, descripcion, orden")
-        .in("session_id", sessionIds)
-        .order("orden");
-      if (!blocks?.length) return;
-
-      const { data: newBlocks } = await supabase
-        .from("blocks")
-        .insert(
-          blocks.map((b) => ({
-            session_id: sessionIdMap.get(b.session_id)!,
-            nombre: b.nombre,
-            color: b.color,
-            descanso: b.descanso,
-            descripcion: b.descripcion,
-            orden: b.orden,
-          }))
-        )
-        .select("id");
-      if (!newBlocks?.length) return;
-
-      const blockIdMap = new Map(blocks.map((b, i) => [b.id, newBlocks[i].id]));
-
-      const { data: exs } = await supabase
-        .from("block_exercises")
-        .select("block_id, exercise_id, series, reps, orden")
-        .in("block_id", blocks.map((b) => b.id));
-      if (!exs?.length) return;
-
-      await supabase.from("block_exercises").insert(
-        exs.map((e) => ({
-          block_id: blockIdMap.get(e.block_id)!,
-          exercise_id: e.exercise_id,
-          series: e.series,
-          reps: e.reps,
-          orden: e.orden,
-        }))
-      );
-    })(),
-  ]);
-
-  return copy.id;
+  try {
+    return await getDirectSql().begin(async (tx) => {
+      const [copy] = await tx<{ id: string }[]>`
+        insert into programs (coach_id, owner_student_id, nombre, descripcion, objetivo, nivel, duracion_semanas)
+        select ${opts.coachId}, ${opts.ownerStudentId}, ${opts.nombre}, descripcion, coalesce(objetivo, 'General'),
+               coalesce(nivel, 'Intermedio'), coalesce(duracion_semanas, 8)
+        from programs where id = ${sourceProgramId} and coach_id = ${opts.coachId}
+        returning id`;
+      if (!copy) throw new Error("No se encontró el programa de origen.");
+      const weeks = await tx<{ id: string; numero: number }[]>`
+        select id, numero from weeks where program_id = ${sourceProgramId} order by numero`;
+      const sources: { sessionId: string; toWeekId: string }[] = [];
+      for (const w of weeks) {
+        const [nw] = await tx<{ id: string }[]>`insert into weeks (program_id, numero) values (${copy.id}, ${w.numero}) returning id`;
+        const ses = await tx<{ id: string }[]>`select id from sessions where week_id = ${w.id} order by orden`;
+        for (const s of ses) sources.push({ sessionId: s.id, toWeekId: nw.id });
+      }
+      await copySessionsExact(tx, sources);
+      return copy.id;
+    });
+  } catch (err) {
+    console.error("[cloneProgram]", err);
+    return null;
+  }
 }
 
 // ---------- Importar un programa de la biblioteca general como rutina
@@ -287,5 +184,53 @@ export async function saveProgramAsTemplate(studentId: string, programId: string
 
   revalidatePath("/programas");
   revalidatePath(`/alumnos/${studentId}`);
+  redirect(`/alumnos/${studentId}?saved=1`);
+}
+
+// ---------- Usar la MISMA rutina que otro alumno (compartida, no copia) ----------
+//
+// A diferencia de importProgramAsPersonal (que clona y deja dos rutinas
+// separadas que después no se actualizan entre sí), esto apunta al alumno
+// al mismo programa que ya usa el otro. Cualquier cambio que el coach haga
+// en esa rutina (agregar una sesión, cambiar series…) lo ven los dos.
+// Conexión directa (rápida y sin los timeouts de la API REST); como no pasa
+// por RLS, se chequea a mano que ambos alumnos sean del coach.
+export async function shareRoutineFromStudent(studentId: string, formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const sourceStudentId = String(formData.get("source_student_id") || "");
+  if (!sourceStudentId) {
+    redirect(`/alumnos/${studentId}?error=${encodeURIComponent("Elegí de qué alumno copiar la rutina")}`);
+  }
+
+  let targetUserId: string | null = null;
+  let errorMsg: string | null = null;
+  try {
+    const rows = await getDirectSql()<{ user_id: string | null }[]>`
+      update students t
+      set programa_id = s.programa_id, semana_actual = coalesce(s.semana_actual, 1)
+      from students s
+      where t.id = ${studentId} and t.coach_id = ${user.id}
+        and s.id = ${sourceStudentId} and s.coach_id = ${user.id}
+        and s.programa_id is not null and t.id <> s.id
+      returning t.user_id
+    `;
+    if (rows.length === 0) errorMsg = "No se pudo: ese alumno no tiene una rutina asignada.";
+    else targetUserId = rows[0].user_id;
+  } catch (err) {
+    errorMsg = friendlyDbError(err) ?? "No se pudo asignar la rutina.";
+  }
+
+  if (errorMsg) redirect(`/alumnos/${studentId}?error=${encodeURIComponent(errorMsg)}`);
+
+  if (targetUserId) {
+    await sendPushToUser(supabase, targetUserId, {
+      title: "Tenés una rutina nueva",
+      body: "Tu coach te asignó una rutina.",
+      url: "/alumno",
+    });
+  }
+
+  revalidatePath("/alumnos", "layout");
+  revalidatePath("/programas", "layout");
   redirect(`/alumnos/${studentId}?saved=1`);
 }

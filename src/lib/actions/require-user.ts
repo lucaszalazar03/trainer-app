@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getVerifiedUser } from "@/lib/supabase/verified-user";
+import { makeHybridClient } from "@/lib/db/hybrid-client";
 
 /**
  * Toda Server Action de datos del coach arranca llamando esto.
@@ -13,5 +14,7 @@ export async function requireUser() {
 
   if (!user) redirect("/login");
 
-  return { supabase, user };
+  // .from()/.rpc() van por la conexión directa con las reglas de seguridad
+  // del usuario (ver hybrid-client.ts); .auth y .storage, por Supabase.
+  return { supabase: makeHybridClient(supabase, user.id), user };
 }

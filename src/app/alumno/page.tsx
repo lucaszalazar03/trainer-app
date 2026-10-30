@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import AlumnoShell from "@/components/AlumnoShell";
 import { Icon } from "@/components/Icon";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
+import { WeekBar } from "@/components/WeekBar";
 import { requireStudent } from "@/lib/actions/require-student";
+import { asUser } from "@/lib/db/as-user";
 import { DIAS } from "@/lib/constants";
-import { TIMEZONE, diaDelMesHoy, inicioDeHoyArgentina, inicioDeSemanaArgentina } from "@/lib/date";
+import { TIMEZONE, diaDelMesHoy, inicioDeHoyArgentina, inicioDeSemanaArgentina, nombreDiaHoy } from "@/lib/date";
 import { undoTraining } from "./actions";
 
 const DIA_CORTO: Record<(typeof DIAS)[number], string> = {
@@ -33,96 +35,87 @@ export default async function AlumnoHoyPage({
   searchParams: Promise<{ entrenado?: string; deshecho?: string; checkin?: string }>;
 }) {
   const { entrenado, deshecho, checkin } = await searchParams;
-  const { supabase, student } = await requireStudent();
+  const { user, student } = await requireStudent();
 
   const startOfToday = inicioDeHoyArgentina();
-
-  // El check-in de hoy se resuelve primero y aparte de todo lo demás —
-  // no depende del programa ni de las sesiones. Si todavía no lo hizo, lo
-  // mandamos derecho para allá: tiene que ser lo primero que ve al entrar
-  // a la app, antes de llegar a su entrenamiento del día. Una vez que lo
-  // completa, submitCheckin lo trae de vuelta acá (ver actions.ts).
-  const { data: checkinHoy } = await supabase
-    .from("checkins")
-    .select("id")
-    .eq("student_id", student.id)
-    .gte("fecha", startOfToday.toISOString())
-    .maybeSingle();
-
-  if (!checkinHoy) redirect("/alumno/checkin");
-
-  // programa → semana → sesiones son dependientes entre sí (necesitan el id
-  // del anterior), así que van en cadena.
-  async function cargarProgramaDeHoy() {
-    const { data: program } = student.programa_id
-      ? await supabase
-          .from("programs")
-          .select("id, nombre, objetivo, duracion_semanas")
-          .eq("id", student.programa_id)
-          .maybeSingle()
-      : { data: null };
-
-    const { data: week } = program
-      ? await supabase
-          .from("weeks")
-          .select("id, numero")
-          .eq("program_id", program.id)
-          .eq("numero", student.semana_actual)
-          .maybeSingle()
-      : { data: null };
-
-    const { data: sessions } = week
-      ? await supabase
-          .from("sessions")
-          .select("id, nombre, objetivo")
-          .eq("week_id", week.id)
-          .order("orden")
-      : { data: [] as { id: string; nombre: string; objetivo: string | null }[] };
-
-    return { program, sessions: sessions ?? [] };
-  }
-
-  const { program, sessions } = await cargarProgramaDeHoy();
-  const total = sessions.length;
-
-  // Las sesiones de la semana ya no están atadas a un día fijo: el alumno
-  // puede hacer "Día 1", "Día 2", etc. en el orden que quiera (martes,
-  // jueves, el mismo día dos veces, como le convenga). Lo único que se
-  // numera es el ORDEN dentro de la semana del programa (el mismo que usa
-  // el coach al armarla) — no un día del calendario real.
-  //
-  // "Completada" se define por semana REAL (lunes a domingo, huso
-  // argentino), no por sesión-del-día como antes: así, si el alumno se
-  // queda en la misma semana del programa más de 7 días (el coach todavía
-  // no le avanzó de semana), el lunes siguiente vuelve a poder hacer todas
-  // las sesiones desde cero, en vez de quedar "hechas" para siempre.
   const inicioSemana = inicioDeSemanaArgentina();
 
-  const { data: logsSemana } = total
-    ? await supabase
-        .from("training_logs")
-        .select("id, session_id")
-        .in(
-          "session_id",
-          sessions.map((s) => s.id)
-        )
-        .gte("created_at", inicioSemana.toISOString())
-    : { data: [] as { id: string; session_id: string | null }[] };
+  // Todo por conexión directa con las reglas de seguridad del alumno (ver
+  // as-user.ts), en una sola tanda. Antes eran 5 consultas REST en cadena y,
+  // si alguna se cortaba, la pantalla salía vacía o el alumno no podía entrar.
+  const [checkinRows, programRows, sessions, logsSemana] = await asUser(user.id, (sql) =>
+    Promise.all([
+      sql<{ id: string }[]>`
+        select id from checkins where student_id = ${student.id} and fecha >= ${startOfToday.toISOString()} limit 1`,
+      student.programa_id
+        ? sql<{ id: string; nombre: string; objetivo: string | null; duracion_semanas: number | null }[]>`
+            select id, nombre, objetivo, duracion_semanas from programs where id = ${student.programa_id}`
+        : Promise.resolve([] as { id: string; nombre: string; objetivo: string | null; duracion_semanas: number | null }[]),
+      student.programa_id
+        ? sql<{ id: string; nombre: string; objetivo: string | null; dia: string | null }[]>`
+            select se.id, se.nombre, se.objetivo, se.dia
+            from sessions se join weeks w on w.id = se.week_id
+            where w.program_id = ${student.programa_id} and w.numero = ${student.semana_actual}
+            order by se.orden`
+        : Promise.resolve([] as { id: string; nombre: string; objetivo: string | null; dia: string | null }[]),
+      // "Completada" se define por semana REAL (lunes a domingo, huso
+      // argentino): si el alumno sigue en la misma semana del programa más
+      // de 7 días, el lunes siguiente vuelve a poder hacer todo.
+      sql<{ id: string; session_id: string | null }[]>`
+        select id, session_id from training_logs
+        where student_id = ${student.id} and created_at >= ${inicioSemana.toISOString()}`,
+    ])
+  );
+
+  // El check-in de hoy tiene que ser lo primero que ve al entrar a la app.
+  if (checkinRows.length === 0) redirect("/alumno/checkin");
+
+  const program = programRows[0] ?? null;
+  const total = sessions.length;
 
   const logIdPorSesion = new Map((logsSemana ?? []).map((l) => [l.session_id, l.id]));
 
-  const sesiones = sessions.map((s, i) => ({
-    ...s,
-    numero: i + 1,
-    logId: logIdPorSesion.get(s.id) ?? null,
-  }));
+  // Cada sesión se muestra con el día que le puso el coach ("Lunes",
+  // "Miércoles"…). Es una guía, no una obligación: si el alumno no hizo la
+  // del miércoles, el jueves le aparece como pendiente y la puede hacer
+  // igual (cualquier sesión se puede empezar cualquier día). Las que no
+  // tienen día cargado se muestran como "Día N" según su orden, al final.
+  const hoyIdx = DIAS.indexOf(nombreDiaHoy());
+  const sesiones = sessions
+    .map((s, i) => {
+      const diaIdx = DIAS.indexOf(s.dia as (typeof DIAS)[number]);
+      const logId = logIdPorSesion.get(s.id) ?? null;
+      const estado: "hecha" | "hoy" | "pendiente" | "proxima" =
+        logId ? "hecha" : diaIdx === -1 ? "proxima" : diaIdx === hoyIdx ? "hoy" : diaIdx < hoyIdx ? "pendiente" : "proxima";
+      return {
+        ...s,
+        numero: i + 1,
+        diaIdx,
+        etiqueta: diaIdx === -1 ? `Día ${i + 1}` : DIAS[diaIdx],
+        logId,
+        estado,
+      };
+    })
+    .sort((a, b) => (a.diaIdx === -1 ? 7 : a.diaIdx) - (b.diaIdx === -1 ? 7 : b.diaIdx) || a.numero - b.numero);
 
   const completadas = sesiones.filter((s) => s.logId).length;
-  // La "sugerida" es la primera sin hacer, en el orden de la semana — no
-  // obliga a nada, es sólo para no dejarlo mirando una lista sin saber por
-  // dónde arrancar. Si ya hizo todas, no hay sugerida.
-  const sugerida = sesiones.find((s) => !s.logId) ?? null;
+  // La destacada arriba: la de hoy si todavía no la hizo; si no, la que le
+  // quedó pendiente de un día anterior; si no, la próxima sin hacer.
+  const sugerida =
+    sesiones.find((s) => s.estado === "hoy") ??
+    sesiones.find((s) => s.estado === "pendiente") ??
+    sesiones.find((s) => !s.logId) ??
+    null;
   const resto = sesiones.filter((s) => s.id !== sugerida?.id);
+  const tagSugerida = !sugerida
+    ? ""
+    : sugerida.estado === "hoy"
+      ? `Hoy · ${sugerida.etiqueta}`
+      : sugerida.estado === "pendiente"
+        ? `Te quedó pendiente del ${sugerida.etiqueta.toLowerCase()} · la podés hacer hoy`
+        : sugerida.diaIdx === -1
+          ? `${completadas > 0 ? "Seguí con" : "Arrancá con"} · ${sugerida.etiqueta}`
+          : `Próxima · ${sugerida.etiqueta}`;
 
   const semana = semanaActual();
   const hoyNum = diaDelMesHoy();
@@ -156,7 +149,6 @@ export default async function AlumnoHoyPage({
         <div className="empty">Todavía no tenés un programa asignado. Cuando tu coach te asigne uno, vas a ver tu entrenamiento acá.</div>
       ) : total === 0 ? (
         <>
-          <div className="section-pill">Tu semana</div>
           <div className="today-card">
             <div className="today-card-photo">
               <div className="tag">Semana {student.semana_actual}</div>
@@ -167,14 +159,12 @@ export default async function AlumnoHoyPage({
         </>
       ) : (
         <>
-          <div className="section-pill">Tu semana</div>
-
           {sugerida ? (
             <div className="today-card">
               <div className="today-card-photo">
                 <div className="today-card-head">
                   <div className="tag">
-                    {completadas > 0 ? "Seguí con" : "Arrancá con"} · Día {sugerida.numero} de {total}
+                    {tagSugerida}
                   </div>
                   <Icon name="chevronRight" size={16} className="today-card-chevron" />
                 </div>
@@ -202,6 +192,16 @@ export default async function AlumnoHoyPage({
             </div>
           )}
 
+          <div className="week-load">
+            <div className="week-load-head">
+              <span className="section-pill">Tu semana</span>
+              <span className="week-load-count">
+                {completadas} de {total} {total === 1 ? "sesión" : "sesiones"}
+              </span>
+            </div>
+            <WeekBar done={completadas} total={total} />
+          </div>
+
           {resto.length > 0 && (
             <>
               <div className="section-h" style={{ marginTop: 0 }}>
@@ -210,18 +210,15 @@ export default async function AlumnoHoyPage({
               <div className="mini-list">
                 {resto.map((s) => (
                   <div key={s.id} className="mini-row">
-                    <span
-                      style={{
-                        minWidth: 46,
-                        fontSize: 10.5,
-                        fontFamily: "var(--font-display)",
-                        textTransform: "uppercase",
-                        color: "var(--text-faint)",
-                      }}
-                    >
-                      Día {s.numero}
+                    <span className="mini-day">{s.etiqueta}</span>
+                    <span className="mini-name">
+                      {s.nombre}
+                      {s.estado === "pendiente" && (
+                        <span className="badge warn" style={{ marginLeft: 6 }}>
+                          Pendiente
+                        </span>
+                      )}
                     </span>
-                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{s.nombre}</span>
                     {s.logId ? (
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "0 0 auto" }}>
                         <span className="badge green">
@@ -232,14 +229,14 @@ export default async function AlumnoHoyPage({
                           <ConfirmSubmitButton
                             confirmMessage="¿Deshacer este entrenamiento? Vas a poder volver a marcarlo desde cero."
                             className="btn ghost sm"
-                            style={{ color: "var(--text-faint)", padding: "4px 8px", fontSize: 11 }}
+                            style={{ color: "var(--text-dim)", padding: "4px 8px" }}
                           >
                             Deshacer
                           </ConfirmSubmitButton>
                         </form>
                       </div>
                     ) : (
-                      <Link href={`/alumno/entrenar/${s.id}`} className="btn sm" style={{ flex: "0 0 auto", fontSize: 11.5, padding: "5px 10px" }}>
+                      <Link href={`/alumno/entrenar/${s.id}`} className="btn sm" style={{ flex: "0 0 auto" }}>
                         Empezar
                       </Link>
                     )}

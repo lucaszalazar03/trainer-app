@@ -3,6 +3,9 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { Icon } from "./Icon";
 
+// Búsqueda sin tildes ni mayúsculas: "rotacion" encuentra "Rotación".
+const norm = (t: string | null | undefined) => (t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
 type ExerciseOption = { id: string; nombre: string; grupo: string | null; equipamiento: string | null };
 type AddResult = { ok: boolean; error?: string } | void;
 
@@ -55,17 +58,17 @@ export function AddExerciseModal({
   const attemptRef = useRef(0);
 
   const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
+    const needle = norm(q.trim());
     if (!needle) return exercises;
     return exercises.filter(
       (ex) =>
-        ex.nombre.toLowerCase().includes(needle) ||
-        (ex.grupo?.toLowerCase().includes(needle) ?? false) ||
-        (ex.equipamiento?.toLowerCase().includes(needle) ?? false)
+        norm(ex.nombre).includes(needle) ||
+        norm(ex.grupo).includes(needle) ||
+        norm(ex.equipamiento).includes(needle)
     );
   }, [q, exercises]);
 
-  const exactMatch = exercises.some((ex) => ex.nombre.trim().toLowerCase() === q.trim().toLowerCase());
+  const exactMatch = exercises.some((ex) => norm(ex.nombre.trim()) === norm(q.trim()));
 
   function close() {
     setOpen(false);

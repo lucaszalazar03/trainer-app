@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import CoachShell from "@/components/CoachShell";
 import { Crumbs } from "@/components/Crumbs";
 import { SubmitButton } from "@/components/SubmitButton";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/actions/require-user";
+import { asUser } from "@/lib/db/as-user";
 import { assignGroup } from "../../actions";
 
 export default async function AgruparAlumnosPage({
@@ -15,30 +16,30 @@ export default async function AgruparAlumnosPage({
   const { id: programId } = await params;
   const { semana } = await searchParams;
 
-  const supabase = await createClient();
+  if (!/^[0-9a-f-]{36}$/i.test(programId)) notFound();
+  const { user } = await requireUser();
 
-  const { data: program } = await supabase
-    .from("programs")
-    .select("id, nombre, owner_student_id")
-    .eq("id", programId)
-    .maybeSingle();
+  // Conexión directa con las reglas de seguridad del usuario (ver as-user.ts).
+  const [[program], weekRows, students, programsById] = await asUser(user.id, (sql) =>
+    Promise.all([
+      sql<{ id: string; nombre: string; owner_student_id: string | null }[]>`
+        select id, nombre, owner_student_id from programs where id = ${programId}`,
+      semana && /^[0-9a-f-]{36}$/i.test(semana)
+        ? sql<{ id: string; numero: number }[]>`select id, numero from weeks where id = ${semana} and program_id = ${programId}`
+        : Promise.resolve([] as { id: string; numero: number }[]),
+      sql<{ id: string; nombre: string; programa_id: string | null; semana_actual: number }[]>`
+        select id, nombre, programa_id, semana_actual from students order by nombre`,
+      sql<{ id: string; nombre: string }[]>`select id, nombre from programs`,
+    ])
+  );
   if (!program) notFound();
 
   // Una rutina personal es de un solo alumno — no se agrupa con nadie más.
   if (program.owner_student_id) notFound();
 
-  const { data: week } = semana
-    ? await supabase.from("weeks").select("id, numero").eq("id", semana).maybeSingle()
-    : { data: null };
-
+  const week = weekRows[0];
   if (!week) notFound();
 
-  const { data: students } = await supabase
-    .from("students")
-    .select("id, nombre, programa_id, semana_actual")
-    .order("nombre");
-
-  const { data: programsById } = await supabase.from("programs").select("id, nombre");
   const programNames = Object.fromEntries((programsById ?? []).map((p) => [p.id, p.nombre]));
 
   const assignAction = assignGroup.bind(null, programId, week.id, week.numero);
@@ -53,7 +54,7 @@ export default async function AgruparAlumnosPage({
             { label: "Agrupar alumnos" },
           ]}
         />
-        <h1 style={{ fontSize: 20, margin: "0 0 6px" }}>Agrupar alumnos</h1>
+        <h1 style={{ margin: "0 0 6px" }}>Agrupar alumnos</h1>
         <p style={{ color: "var(--text-dim)", fontSize: 13, margin: "0 0 20px" }}>
           Los alumnos que marques van a quedar en <strong>{program.nombre} · Semana {week.numero}</strong> y van a
           ver exactamente las mismas sesiones.

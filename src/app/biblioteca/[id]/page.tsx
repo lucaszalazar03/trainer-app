@@ -10,7 +10,11 @@ import { ExerciseVideoCard } from "@/components/ExerciseVideoCard";
 import { requireUser } from "@/lib/actions/require-user";
 import { getDirectSql } from "@/lib/db/direct";
 import { friendlyDbError } from "@/lib/db/friendly-error";
-import { updateExercise, deleteExercise, setExerciseVideoUrl, removeExerciseVideo } from "../actions";
+import { updateExercise, deleteExercise, setExerciseVideoUrl, removeExerciseVideo, cleanExerciseVideoAudio } from "../actions";
+
+// Limpiar el sonido de un video (ffmpeg en el servidor) puede tardar unos
+// segundos más que un guardado común.
+export const maxDuration = 60;
 
 export default async function EjercicioDetailPage({
   params,
@@ -105,12 +109,13 @@ export default async function EjercicioDetailPage({
   const deleteWithId = deleteExercise.bind(null, id);
   const setVideoUrlWithId = setExerciseVideoUrl.bind(null, id);
   const removeVideoWithId = removeExerciseVideo.bind(null, id);
+  const cleanAudioWithId = cleanExerciseVideoAudio.bind(null, id);
 
   return (
     <CoachShell active="/biblioteca">
       <div style={{ maxWidth: 480 }}>
         <Crumbs items={[{ label: "Biblioteca", href: withFilter("/biblioteca") }, { label: exercise.nombre }]} />
-        <h1 style={{ fontSize: 20, margin: "0 0 14px" }}>{exercise.nombre}</h1>
+        <h1 style={{ margin: "0 0 14px" }}>{exercise.nombre}</h1>
 
         {idx !== -1 && ids.length > 1 && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -150,6 +155,7 @@ export default async function EjercicioDetailPage({
           initialVideoUrl={exercise.video_url}
           onSetVideoUrl={setVideoUrlWithId}
           onRemoveVideo={removeVideoWithId}
+          onCleanAudio={cleanAudioWithId}
         />
 
         <form action={updateWithId}>

@@ -7,7 +7,8 @@ import { revalidateExerciseLists } from "@/lib/db/exercises";
 import { requireUser } from "@/lib/actions/require-user";
 import { getDirectSql } from "@/lib/db/direct";
 import { friendlyDbError } from "@/lib/db/friendly-error";
-import { VIDEO_BUCKET } from "@/lib/video";
+import { VIDEO_BUCKET, storagePathFromUrl, type AudioMode } from "@/lib/video";
+import { cleanVideoAudio } from "@/lib/video-audio";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof requireUser>>["supabase"];
 
@@ -260,4 +261,68 @@ export async function deleteCategory(id: string, back: string) {
   await supabase.from("categories").delete().eq("id", id);
   revalidatePath("/biblioteca");
   redirect(back);
+}
+
+// ---------- Limpiar el sonido de un video (quitar ruido o dejarlo mudo) ----------
+//
+// Se usa en dos casos desde ExerciseVideoCard:
+//  1. Recién subido: el navegador sube el archivo original a storage y pide
+//     acá la versión limpia. removeSource=true borra el original, así nunca
+//     queda guardado un video con ruido.
+//  2. Video que ya estaba: se procesa el actual (sourcePath = null) y el
+//     cliente después llama a setExerciseVideoUrl con el link nuevo, que ya
+//     borra el archivo viejo.
+// Devuelve el link público del video limpio; NO lo asigna al ejercicio.
+export async function cleanExerciseVideoAudio(
+  exerciseId: string,
+  sourcePath: string | null,
+  mode: AudioMode,
+  removeSource: boolean
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  const { supabase, user } = await requireUser();
+  if (mode !== "ruido" && mode !== "mudo") return { ok: false, error: "Opción de sonido inválida." };
+
+  // El ejercicio tiene que ser del coach (conexión directa: ver comentario
+  // en createExercise). Si no viene sourcePath, usamos su video actual.
+  let currentUrl: string | null = null;
+  try {
+    const rows = await getDirectSql()<{ video_url: string | null }[]>`
+      select video_url from exercises where id = ${exerciseId} and coach_id = ${user.id}
+    `;
+    if (rows.length === 0) return { ok: false, error: "No se encontró el ejercicio (o no te pertenece)." };
+    currentUrl = rows[0].video_url;
+  } catch (err) {
+    return { ok: false, error: friendlyDbError(err) ?? "No se pudo leer el ejercicio." };
+  }
+
+  const src = sourcePath ?? storagePathFromUrl(currentUrl);
+  if (!src) return { ok: false, error: "Este ejercicio no tiene un video subido a la app para limpiar." };
+  // Sólo archivos de la carpeta propia del coach.
+  if (!src.startsWith(`${user.id}/`) || src.includes("..")) {
+    return { ok: false, error: "No tenés permiso sobre ese video." };
+  }
+
+  const { data: blob, error: dlError } = await supabase.storage.from(VIDEO_BUCKET).download(src);
+  if (dlError || !blob) return { ok: false, error: `No se pudo leer el video: ${dlError?.message ?? "vacío"}` };
+
+  const ext = (src.split(".").pop() || "mp4").toLowerCase();
+  let cleaned: Buffer;
+  try {
+    cleaned = await cleanVideoAudio(Buffer.from(await blob.arrayBuffer()), ext, mode);
+  } catch (err) {
+    return { ok: false, error: `No se pudo limpiar el sonido: ${(err as Error).message}` };
+  }
+
+  const outPath = `${user.id}/${exerciseId}-${Date.now()}-${mode === "mudo" ? "sin-sonido" : "sin-ruido"}.${ext}`;
+  const { error: upError } = await supabase.storage
+    .from(VIDEO_BUCKET)
+    .upload(outPath, cleaned, { contentType: blob.type || "video/mp4", upsert: true });
+  if (upError) return { ok: false, error: `No se pudo guardar el video limpio: ${upError.message}` };
+
+  if (removeSource) {
+    after(() => supabase.storage.from(VIDEO_BUCKET).remove([src]).then(() => {}, () => {}));
+  }
+
+  const { data: pub } = supabase.storage.from(VIDEO_BUCKET).getPublicUrl(outPath);
+  return { ok: true, url: pub.publicUrl };
 }

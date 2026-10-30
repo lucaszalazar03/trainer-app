@@ -14,7 +14,7 @@ type ExerciseRow = {
   reps: string | null;
   pesoUltimo?: number | null;
 };
-type BlockData = { id: string; nombre: string; color: string | null; descripcion?: string | null; ejercicios: ExerciseRow[] };
+type BlockData = { id: string; nombre: string; color: string | null; descanso?: string | null; descripcion?: string | null; ejercicios: ExerciseRow[] };
 
 // Id sintético para tratar la entrada en calor como un bloque más (mismo
 // toggle "Marcar completo", mismo agrupado al cerrarse) — nunca choca con
@@ -28,6 +28,7 @@ type Item = {
   isWarmup: boolean;
   index?: number; // posición entre los bloques reales (la entrada en calor no cuenta)
   color?: string | null;
+  descanso?: string | null;
   descripcion?: string | null;
 };
 
@@ -190,7 +191,7 @@ export function TrainingSession({
   // bloque de la rutina.
   const items: Item[] = [
     ...(warmups.length > 0 ? [{ id: WARMUP_ID, nombre: "Entrada en calor", ejercicios: warmups, isWarmup: true }] : []),
-    ...blocks.map((b, i) => ({ id: b.id, nombre: b.nombre, ejercicios: b.ejercicios, isWarmup: false, index: i + 1, color: b.color, descripcion: b.descripcion })),
+    ...blocks.map((b, i) => ({ id: b.id, nombre: b.nombre, ejercicios: b.ejercicios, isWarmup: false, index: i + 1, color: b.color, descanso: b.descanso, descripcion: b.descripcion })),
   ];
 
   const doneBlocksJson = JSON.stringify({
@@ -251,6 +252,7 @@ export function TrainingSession({
                 </div>
                 {expanded && (
                   <div className="a-block-body done" style={{ paddingTop: 8 }}>
+                    {it.descripcion && <p className="a-block-desc">{it.descripcion}</p>}
                     <ExerciseList ejercicios={it.ejercicios} pesos={pesos} setPesos={setPesos} openVideo={openVideo} setOpenVideo={setOpenVideo} />
                   </div>
                 )}
@@ -266,6 +268,12 @@ export function TrainingSession({
             {it.isWarmup && <Icon name="flame" size={15} className="a-warmup-flame" />}
             <h3>{it.nombre}</h3>
           </div>
+          {it.descanso && (
+            <div className="a-block-rest">
+              <Icon name="clock" size={13} />
+              Descanso {it.descanso}
+            </div>
+          )}
           {it.descripcion && <p className="a-block-desc">{it.descripcion}</p>}
           <div className="a-block-body">
             <ExerciseList ejercicios={it.ejercicios} pesos={pesos} setPesos={setPesos} openVideo={openVideo} setOpenVideo={setOpenVideo} />

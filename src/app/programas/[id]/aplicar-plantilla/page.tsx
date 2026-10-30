@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import CoachShell from "@/components/CoachShell";
 import { Crumbs } from "@/components/Crumbs";
 import { SubmitButton } from "@/components/SubmitButton";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/actions/require-user";
+import { asUser } from "@/lib/db/as-user";
 import { applyTemplateToSessions } from "@/app/biblioteca/templates-actions";
 
 export default async function AplicarPlantillaPage({
@@ -15,20 +16,27 @@ export default async function AplicarPlantillaPage({
   const { id: programId } = await params;
   const { semana } = await searchParams;
 
-  const supabase = await createClient();
+  if (!/^[0-9a-f-]{36}$/i.test(programId)) notFound();
+  const { user } = await requireUser();
 
-  const { data: program } = await supabase.from("programs").select("id, nombre").eq("id", programId).maybeSingle();
+  // Conexión directa con las reglas de seguridad del usuario (ver as-user.ts).
+  const okSemana = !!semana && /^[0-9a-f-]{36}$/i.test(semana);
+  const [[program], weekRows, sessions, templates] = await asUser(user.id, (sql) =>
+    Promise.all([
+      sql<{ id: string; nombre: string }[]>`select id, nombre from programs where id = ${programId}`,
+      okSemana
+        ? sql<{ id: string; numero: number }[]>`select id, numero from weeks where id = ${semana!} and program_id = ${programId}`
+        : Promise.resolve([] as { id: string; numero: number }[]),
+      okSemana
+        ? sql<{ id: string; nombre: string }[]>`select id, nombre from sessions where week_id = ${semana!} order by orden`
+        : Promise.resolve([] as { id: string; nombre: string }[]),
+      sql<{ id: string; nombre: string }[]>`
+        select id, nombre from templates where tipo is distinct from 'calentamiento' order by nombre`,
+    ])
+  );
   if (!program) notFound();
-
-  const { data: week } = semana
-    ? await supabase.from("weeks").select("id, numero").eq("id", semana).maybeSingle()
-    : { data: null };
+  const week = weekRows[0];
   if (!week) notFound();
-
-  const [{ data: sessions }, { data: templates }] = await Promise.all([
-    supabase.from("sessions").select("id, nombre").eq("week_id", week.id).order("orden"),
-    supabase.from("templates").select("id, nombre").neq("tipo", "calentamiento").order("nombre"),
-  ]);
 
   const applyAction = applyTemplateToSessions.bind(null, programId, week.id);
 
@@ -42,7 +50,7 @@ export default async function AplicarPlantillaPage({
             { label: "Aplicar plantilla" },
           ]}
         />
-        <h1 style={{ fontSize: 20, margin: "0 0 6px" }}>Aplicar plantilla a varias sesiones</h1>
+        <h1 style={{ margin: "0 0 6px" }}>Aplicar plantilla a varias sesiones</h1>
         <p style={{ color: "var(--text-dim)", fontSize: 13, margin: "0 0 20px" }}>
           Elegí una plantilla de bloques y las sesiones de <strong>Semana {week.numero}</strong> donde insertarla. Se
           agrega a cada sesión elegida sin borrar lo que ya tenga.

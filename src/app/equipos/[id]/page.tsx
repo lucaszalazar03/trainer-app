@@ -5,7 +5,8 @@ import { Crumbs } from "@/components/Crumbs";
 import { TextField, ErrorBanner, SuccessBanner } from "@/components/FormField";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { SubmitButton } from "@/components/SubmitButton";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/actions/require-user";
+import { asUser } from "@/lib/db/as-user";
 import { updateTeam, deleteTeam, updateMembers, assignTeamProgram } from "../actions";
 
 export default async function EquipoDetailPage({
@@ -18,27 +19,24 @@ export default async function EquipoDetailPage({
   const { id } = await params;
   const { error, saved } = await searchParams;
 
-  const supabase = await createClient();
+  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+  const { user } = await requireUser();
 
-  const { data: team } = await supabase.from("teams").select("id, nombre").eq("id", id).maybeSingle();
+  // Conexión directa con las reglas de seguridad del usuario (ver as-user.ts).
+  const [[team], members, students, programs] = await asUser(user.id, (sql) =>
+    Promise.all([
+      sql<{ id: string; nombre: string }[]>`select id, nombre from teams where id = ${id}`,
+      sql<{ student_id: string }[]>`select student_id from team_members where team_id = ${id}`,
+      sql<{ id: string; nombre: string; programa_id: string | null; semana_actual: number }[]>`
+        select id, nombre, programa_id, semana_actual from students order by nombre`,
+      // Sólo programas generales — una rutina personal de un alumno puntual no
+      // debe poder asignarse a todo un equipo.
+      sql<{ id: string; nombre: string }[]>`select id, nombre from programs where owner_student_id is null order by nombre`,
+    ])
+  );
   if (!team) notFound();
 
-  const { data: members } = await supabase.from("team_members").select("student_id").eq("team_id", id);
-
-  const memberIds = new Set((members ?? []).map((m) => m.student_id));
-
-  const { data: students } = await supabase
-    .from("students")
-    .select("id, nombre, programa_id, semana_actual")
-    .order("nombre");
-
-  // Sólo programas generales — una rutina personal de un alumno puntual no
-  // debe poder asignarse a todo un equipo.
-  const { data: programs } = await supabase
-    .from("programs")
-    .select("id, nombre")
-    .is("owner_student_id", null)
-    .order("nombre");
+  const memberIds = new Set(members.map((m) => m.student_id));
   const programNames = Object.fromEntries((programs ?? []).map((p) => [p.id, p.nombre]));
 
   const currentMembers = (students ?? []).filter((s) => memberIds.has(s.id));
@@ -47,7 +45,7 @@ export default async function EquipoDetailPage({
     <CoachShell active="/equipos">
       <div style={{ maxWidth: 520 }}>
         <Crumbs items={[{ label: "Equipos", href: "/equipos" }, { label: team.nombre }]} />
-        <h1 style={{ fontSize: 20, margin: "0 0 20px" }}>{team.nombre}</h1>
+        <h1 style={{ margin: "0 0 20px" }}>{team.nombre}</h1>
 
         <ErrorBanner message={error} />
         <SuccessBanner show={saved} message="Cambios guardados." />

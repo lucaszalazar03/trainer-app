@@ -53,15 +53,21 @@ export function ExerciseLibrary({
   const categoryNames = useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c.nombre])), [categories]);
 
   const visible = useMemo(() => {
-    const needle = deferredQ.trim().toLowerCase();
+    // Sin tildes: "rotacion" encuentra "Rotación" y viceversa.
+    const norm = (t: string | null | undefined) =>
+      (t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const needle = norm(deferredQ.trim());
     return exercises.filter(
       (ex) =>
         !removed.has(ex.id) &&
-        (!categoria || ex.categoria_id === categoria) &&
+        // Si el coach está buscando por nombre, buscamos en TODAS las
+        // categorías (antes, con una categoría elegida, los ejercicios sin
+        // categoría — los creados rápido desde una sesión — no aparecían).
+        (needle || !categoria || (categoria === "sin" ? !ex.categoria_id : ex.categoria_id === categoria)) &&
         (!needle ||
-          ex.nombre.toLowerCase().includes(needle) ||
-          (ex.grupo?.toLowerCase().includes(needle) ?? false) ||
-          (ex.equipamiento?.toLowerCase().includes(needle) ?? false))
+          norm(ex.nombre).includes(needle) ||
+          norm(ex.grupo).includes(needle) ||
+          norm(ex.equipamiento).includes(needle))
     );
   }, [exercises, removed, categoria, deferredQ]);
 
@@ -136,6 +142,18 @@ export function ExerciseLibrary({
         >
           Todas
         </button>
+        {exercises.some((ex) => !ex.categoria_id) && (
+          <button
+            type="button"
+            className={`chip ${categoria === "sin" ? "active" : ""}`}
+            onClick={() => {
+              setCategoria("sin");
+              syncUrl(q, "sin");
+            }}
+          >
+            Sin categoría
+          </button>
+        )}
         {categories.map((c) => (
           <button
             key={c.id}

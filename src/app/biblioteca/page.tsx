@@ -5,6 +5,7 @@ import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ExerciseLibrary, type LibraryExercise } from "@/components/ExerciseLibrary";
 import { requireUser } from "@/lib/actions/require-user";
+import { asUser } from "@/lib/db/as-user";
 import { getDirectSql } from "@/lib/db/direct";
 import { friendlyDbError } from "@/lib/db/friendly-error";
 import { createCategory, deleteCategory } from "./actions";
@@ -17,7 +18,7 @@ export default async function BibliotecaPage({
 }) {
   const { categoria = "", q = "", tab = "ejercicios", saved, error } = await searchParams;
 
-  const { supabase, user } = await requireUser();
+  const { user } = await requireUser();
   const sql = getDirectSql();
 
   // Ejercicios + categorías por conexión directa, en UNA tanda. Antes iban
@@ -51,13 +52,18 @@ export default async function BibliotecaPage({
     loadError = friendlyDbError(err) ?? "No se pudo cargar la biblioteca.";
   }
 
-  const { data: templates } =
+  // Plantillas por conexión directa con las reglas de seguridad del usuario
+  // (ver as-user.ts).
+  const templates =
     tab === "plantillas"
-      ? await supabase
-          .from("templates")
-          .select("id, nombre, tipo, template_blocks(count), template_warmup_exercises(count)")
-          .order("nombre")
-      : { data: [] as never[] };
+      ? await asUser(user.id, (tx) => tx<
+          { id: string; nombre: string; tipo: string | null; n_bloques: number; n_calor: number }[]
+        >`
+          select t.id, t.nombre, t.tipo,
+            (select count(*)::int from template_blocks b where b.template_id = t.id) as n_bloques,
+            (select count(*)::int from template_warmup_exercises w where w.template_id = t.id) as n_calor
+          from templates t order by t.nombre`)
+      : [];
 
   const backParams = new URLSearchParams({ tab: "ejercicios" });
   if (categoria) backParams.set("categoria", categoria);
@@ -110,8 +116,8 @@ export default async function BibliotecaPage({
           <div className="grid g-cards">
             {templates.map((t) => {
               const esCalentamiento = (t as unknown as { tipo: string }).tipo === "calentamiento";
-              const nBloques = (t.template_blocks as unknown as { count: number }[] | null)?.[0]?.count ?? 0;
-              const nEjercicios = (t as unknown as { template_warmup_exercises: { count: number }[] | null }).template_warmup_exercises?.[0]?.count ?? 0;
+              const nBloques = t.n_bloques;
+              const nEjercicios = t.n_calor;
               const meta = esCalentamiento
                 ? nEjercicios === 0
                   ? "Sin ejercicios todavía"

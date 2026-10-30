@@ -2,7 +2,8 @@ import CoachShell from "@/components/CoachShell";
 import { Crumbs } from "@/components/Crumbs";
 import { TextField, TextAreaField, ErrorBanner } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/actions/require-user";
+import { asUser } from "@/lib/db/as-user";
 import { createExercise } from "../actions";
 
 export default async function NuevoEjercicioPage({
@@ -12,14 +13,16 @@ export default async function NuevoEjercicioPage({
 }) {
   const { error } = await searchParams;
 
-  const supabase = await createClient();
-  const { data: categories } = await supabase.from("categories").select("id, nombre").order("nombre");
+  const { user } = await requireUser();
+  // Conexión directa con las reglas de seguridad del usuario (ver as-user.ts).
+  const categories = await asUser(user.id, (sql) => sql<{ id: string; nombre: string }[]>`
+    select id, nombre from categories order by nombre`);
 
   return (
     <CoachShell active="/biblioteca">
       <div style={{ maxWidth: 480 }}>
         <Crumbs items={[{ label: "Biblioteca", href: "/biblioteca" }, { label: "Nuevo ejercicio" }]} />
-        <h1 style={{ fontSize: 20, margin: "0 0 20px" }}>Nuevo ejercicio</h1>
+        <h1 style={{ margin: "0 0 20px" }}>Nuevo ejercicio</h1>
 
         <ErrorBanner message={error} />
 

@@ -1,39 +1,29 @@
 import AlumnoShell from "@/components/AlumnoShell";
 import { requireStudent } from "@/lib/actions/require-student";
+import { asUser } from "@/lib/db/as-user";
 import { TIMEZONE, inicioDeSemanaArgentina } from "@/lib/date";
 
 export default async function ProgresoPage() {
-  const { supabase, student } = await requireStudent();
+  const { user, student } = await requireStudent();
 
-  // "Sesiones totales" antes usaba logs?.length, pero logs viene con un
-  // limit(20) para no traer de más — eso hacía que el número se quedara
-  // pegado en 20 para cualquier alumno con más historial. Separamos el
-  // conteo real (barato, head:true) de la lista que sí necesita el detalle.
-  const [{ data: logs }, { count: totalSesiones }, { data: checkins }, { data: pesosRaw }] = await Promise.all([
-    supabase
-      .from("training_logs")
-      .select("id, fecha, session_nombre, programa_nombre, comentario, done_blocks")
-      .eq("student_id", student.id)
-      .order("fecha", { ascending: false })
-      .limit(20),
-    supabase.from("training_logs").select("*", { count: "exact", head: true }).eq("student_id", student.id),
-    supabase
-      .from("checkins")
-      .select("id, fecha, energia, dolor, sueno")
-      .eq("student_id", student.id)
-      .order("fecha", { ascending: false })
-      .limit(5),
-    // Mismo criterio que en la ficha que ve el coach (alumnos/[id]): los
-    // últimos 150 registros de peso, de cualquier ejercicio, agrupados acá
-    // abajo por ejercicio — así el alumno también ve su propia evolución de
-    // cargas, no sólo el coach.
-    supabase
-      .from("exercise_logs")
-      .select("exercise_id, peso_kg, fecha, exercises(nombre)")
-      .eq("student_id", student.id)
-      .order("fecha", { ascending: false })
-      .limit(150),
-  ]);
+  // Por conexión directa con las reglas de seguridad del alumno (ver
+  // as-user.ts). Las fechas salen en formato ISO (igual que antes con la API).
+  const [logs, [{ total: totalSesiones }], checkins, pesosRaw] = await asUser(user.id, (sql) =>
+    Promise.all([
+      sql<{ id: string; fecha: string; session_nombre: string | null; programa_nombre: string | null; comentario: string | null; done_blocks: unknown }[]>`
+        select id, to_json(fecha)#>>'{}' as fecha, session_nombre, programa_nombre, comentario, done_blocks
+        from training_logs where student_id = ${student.id} order by fecha desc limit 20`,
+      sql<{ total: number }[]>`select count(*)::int as total from training_logs where student_id = ${student.id}`,
+      sql<{ id: string; fecha: string; energia: number; dolor: number; sueno: number }[]>`
+        select id, to_json(fecha)#>>'{}' as fecha, energia, dolor, sueno
+        from checkins where student_id = ${student.id} order by fecha desc limit 5`,
+      // Últimos 150 registros de peso, agrupados abajo por ejercicio.
+      sql<{ exercise_id: string; peso_kg: number; fecha: string; nombre: string | null }[]>`
+        select l.exercise_id, l.peso_kg::float8 as peso_kg, to_json(l.fecha)#>>'{}' as fecha, e.nombre
+        from exercise_logs l left join exercises e on e.id = l.exercise_id
+        where l.student_id = ${student.id} order by l.fecha desc limit 150`,
+    ])
+  );
 
   const treintaDiasAtras = new Date();
   treintaDiasAtras.setDate(treintaDiasAtras.getDate() - 30);
@@ -61,7 +51,7 @@ export default async function ProgresoPage() {
   // valores conservando el orden (ya viene desc).
   const pesosPorEjercicio = new Map<string, { nombre: string; entradas: { peso: number; fecha: string }[] }>();
   for (const row of pesosRaw ?? []) {
-    const nombre = (row.exercises as unknown as { nombre: string } | null)?.nombre ?? "Ejercicio";
+    const nombre = row.nombre ?? "Ejercicio";
     if (!pesosPorEjercicio.has(row.exercise_id)) pesosPorEjercicio.set(row.exercise_id, { nombre, entradas: [] });
     const grupo = pesosPorEjercicio.get(row.exercise_id)!;
     if (grupo.entradas.length < 5) grupo.entradas.push({ peso: row.peso_kg, fecha: row.fecha });
@@ -90,7 +80,7 @@ export default async function ProgresoPage() {
           <div className="k">Últimos 30 días</div>
         </div>
         <div className="p-stat">
-          <div className="v" style={{ color: racha > 0 ? "var(--accent)" : undefined }}>
+          <div className="v" style={{ color: racha > 0 ? "var(--plate-yellow)" : undefined }}>
             {racha}
           </div>
           <div className="k">Semanas seguidas</div>

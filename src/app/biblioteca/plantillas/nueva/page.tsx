@@ -15,7 +15,7 @@ export default async function NuevaPlantillaPage({
     <CoachShell active="/biblioteca">
       <div style={{ maxWidth: 420 }}>
         <Crumbs items={[{ label: "Biblioteca", href: "/biblioteca?tab=plantillas" }, { label: "Nueva plantilla" }]} />
-        <h1 style={{ fontSize: 20, margin: "0 0 4px" }}>Nueva plantilla</h1>
+        <h1 style={{ margin: "0 0 4px" }}>Nueva plantilla</h1>
         <p style={{ color: "var(--text-dim)", fontSize: 13, margin: "0 0 20px" }}>
           Después le agregás ejercicios, como en una sesión.
         </p>

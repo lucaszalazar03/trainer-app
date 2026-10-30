@@ -44,7 +44,14 @@ export function getDirectSql() {
     // prepare:false porque el pooler de Supabase en modo "Transaction" (el
     // recomendado para funciones serverless como las de Vercel) no soporta
     // prepared statements que crucen de una conexión física a otra.
-    sql = postgres(url, { prepare: false, max: 3, idle_timeout: 20 });
+    // connect_timeout: si la base no responde (por ejemplo, mientras se
+    // reinicia), cortar a los 10s en vez de dejar la pantalla en blanco.
+    sql = postgres(url, {
+      prepare: false,
+      max: 3,
+      idle_timeout: 20,
+      connect_timeout: 10,
+    });
   }
   return sql;
 }

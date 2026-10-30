@@ -13,11 +13,14 @@ export async function subscribeToPush(subscription: {
   const { user } = await requireUser();
   // Conexión directa (la API REST se cortaba por timeout y la suscripción
   // podía no guardarse sin que nadie se entere).
+  // Único por (usuario, celular): un mismo celular puede recibir avisos de
+  // varias cuentas (por ejemplo, el coach que también entra como alumno).
+  // Antes era único por celular y activar en una cuenta se lo sacaba a la otra.
   const sql = getDirectSql();
   await sql`
     insert into push_subscriptions (user_id, endpoint, p256dh, auth)
     values (${user.id}, ${subscription.endpoint}, ${subscription.keys.p256dh}, ${subscription.keys.auth})
-    on conflict (endpoint) do update set user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth
+    on conflict (user_id, endpoint) do update set p256dh = excluded.p256dh, auth = excluded.auth
   `;
   return { ok: true };
 }

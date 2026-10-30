@@ -144,7 +144,7 @@ export function ExerciseRowEditor({
           <span
             style={{
               fontSize: 11,
-              color: isPending ? "var(--text-faint)" : "var(--accent)",
+              color: isPending ? "var(--text-faint)" : "var(--ok)",
               minWidth: 62,
               display: "inline-flex",
               alignItems: "center",

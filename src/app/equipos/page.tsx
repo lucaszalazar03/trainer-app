@@ -1,12 +1,15 @@
 import Link from "next/link";
 import CoachShell from "@/components/CoachShell";
 import { Icon } from "@/components/Icon";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/actions/require-user";
+import { asUser } from "@/lib/db/as-user";
 
 export default async function EquiposPage() {
-  const supabase = await createClient();
-
-  const { data: teams } = await supabase.from("teams").select("id, nombre, team_members(count)").order("nombre");
+  const { user } = await requireUser();
+  // Conexión directa con las reglas de seguridad del usuario (ver as-user.ts).
+  const teams = await asUser(user.id, (sql) => sql<{ id: string; nombre: string; miembros: number }[]>`
+    select t.id, t.nombre, (select count(*)::int from team_members m where m.team_id = t.id) as miembros
+    from teams t order by t.nombre`);
 
   return (
     <CoachShell active="/equipos">
@@ -28,7 +31,7 @@ export default async function EquiposPage() {
       ) : (
         <div className="card" style={{ maxWidth: 700 }}>
           {teams.map((t, i) => {
-            const count = (t.team_members as unknown as { count: number }[])?.[0]?.count ?? 0;
+            const count = t.miembros;
             return (
               <Link
                 key={t.id}

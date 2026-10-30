@@ -6,8 +6,8 @@ import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ExerciseRowEditor } from "@/components/ExerciseRowEditor";
 import { AddExerciseModal } from "@/components/AddExerciseModal";
-import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/actions/require-user";
+import { asUser } from "@/lib/db/as-user";
 import { friendlyDbError } from "@/lib/db/friendly-error";
 import { listExerciseOptions, type ExerciseOption } from "@/lib/db/exercises";
 import { COLORS } from "@/lib/constants";
@@ -46,10 +46,32 @@ export default async function PlantillaEditorPage({
   const { id: templateId } = await params;
   const { saved, error } = await searchParams;
 
-  const supabase = await createClient();
+  if (!/^[0-9a-f-]{36}$/i.test(templateId)) notFound();
+  const { user } = await requireUser();
 
-  const { data: template } = await supabase.from("templates").select("id, nombre, tipo").eq("id", templateId).maybeSingle();
+  // Todo por conexión directa con las reglas de seguridad del usuario (ver
+  // as-user.ts), en una sola tanda.
+  type Row = { id: string; series: number | null; reps: string | null; exercises: { nombre: string } | null };
+  const [[template], warmups, blocks, blockExs] = await asUser(user.id, (sql) =>
+    Promise.all([
+      sql<{ id: string; nombre: string; tipo: string | null }[]>`select id, nombre, tipo from templates where id = ${templateId}`,
+      sql<Row[]>`
+        select w.id, w.series, w.reps, case when e.id is null then null else json_build_object('nombre', e.nombre) end as exercises
+        from template_warmup_exercises w left join exercises e on e.id = w.exercise_id
+        where w.template_id = ${templateId} order by w.orden`,
+      sql<{ id: string; nombre: string; color: string | null; descanso: string | null; descripcion: string | null }[]>`
+        select id, nombre, color, descanso, descripcion from template_blocks where template_id = ${templateId} order by orden`,
+      sql<(Row & { template_block_id: string })[]>`
+        select x.id, x.template_block_id, x.series, x.reps, case when e.id is null then null else json_build_object('nombre', e.nombre) end as exercises
+        from template_block_exercises x
+        join template_blocks b on b.id = x.template_block_id
+        left join exercises e on e.id = x.exercise_id
+        where b.template_id = ${templateId} order by x.orden`,
+    ])
+  );
   if (!template) notFound();
+  const exercisesByBlock: Record<string, Row[]> = {};
+  for (const e of blockExs) (exercisesByBlock[e.template_block_id] ??= []).push(e);
 
   const esCalentamiento = template.tipo === "calentamiento";
   const backUrl = `/biblioteca/plantillas/${templateId}`;
@@ -62,7 +84,6 @@ export default async function PlantillaEditorPage({
   // Por conexión directa (ver src/lib/db/exercises.ts): antes iba por la API
   // REST ignorando el error, y si cortaba por timeout el modal mostraba la
   // biblioteca incompleta. Si falla, mejor mostrar el error.
-  const { user } = await requireUser();
   let exercises: ExerciseOption[] = [];
   let exercisesError: string | null = null;
   try {
@@ -110,10 +131,10 @@ export default async function PlantillaEditorPage({
                 onCreate={quickCreateExerciseAndAddToTemplateWarmupInline.bind(null, templateId, backUrl)}
               />
             </div>
-            <TemplateWarmupList templateId={templateId} backUrl={backUrl} supabase={supabase} />
+            <TemplateWarmupList backUrl={backUrl} warmups={warmups} />
           </>
         ) : (
-          <TemplateBlocks templateId={templateId} backUrl={backUrl} exercises={exercises} supabase={supabase} />
+          <TemplateBlocks templateId={templateId} backUrl={backUrl} exercises={exercises} blocks={blocks} exercisesByBlock={exercisesByBlock} />
         )}
 
         <div style={{ marginTop: 40 }}>
@@ -131,21 +152,13 @@ export default async function PlantillaEditorPage({
   );
 }
 
-async function TemplateWarmupList({
-  templateId,
+function TemplateWarmupList({
   backUrl,
-  supabase,
+  warmups,
 }: {
-  templateId: string;
   backUrl: string;
-  supabase: Awaited<ReturnType<typeof createClient>>;
+  warmups: { id: string; series: number | null; reps: string | null; exercises: { nombre: string } | null }[];
 }) {
-  const { data: warmups } = await supabase
-    .from("template_warmup_exercises")
-    .select("id, series, reps, exercises(nombre)")
-    .eq("template_id", templateId)
-    .order("orden");
-
   if (!warmups || warmups.length === 0) {
     return <div className="empty" style={{ marginBottom: 16 }}>Todavía no hay ejercicios. Agregá el primero.</div>;
   }
@@ -170,36 +183,15 @@ async function TemplateBlocks({
   templateId,
   backUrl,
   exercises,
-  supabase,
+  blocks,
+  exercisesByBlock,
 }: {
   templateId: string;
   backUrl: string;
   exercises: { id: string; nombre: string; grupo: string | null; equipamiento: string | null }[];
-  supabase: Awaited<ReturnType<typeof createClient>>;
+  blocks: { id: string; nombre: string; color: string | null; descanso: string | null; descripcion: string | null }[];
+  exercisesByBlock: Record<string, { id: string; series: number | null; reps: string | null; exercises: { nombre: string } | null }[]>;
 }) {
-  const { data: blocks } = await supabase
-    .from("template_blocks")
-    .select("id, nombre, color, descanso, descripcion")
-    .eq("template_id", templateId)
-    .order("orden");
-
-  const blockIds = blocks?.map((b) => b.id) ?? [];
-  const exercisesByBlock: Record<
-    string,
-    { id: string; series: number | null; reps: string | null; exercises: { nombre: string } | null }[]
-  > = {};
-  if (blockIds.length) {
-    const { data: exs } = await supabase
-      .from("template_block_exercises")
-      .select("id, template_block_id, series, reps, exercises(nombre)")
-      .in("template_block_id", blockIds)
-      .order("orden");
-    for (const e of exs ?? []) {
-      exercisesByBlock[e.template_block_id] ??= [];
-      exercisesByBlock[e.template_block_id].push(e as never);
-    }
-  }
-
   const addBlockAction = addTemplateBlock.bind(null, templateId, backUrl);
 
   return (

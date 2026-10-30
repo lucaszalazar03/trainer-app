@@ -1,16 +1,15 @@
 import Link from "next/link";
 import CoachShell from "@/components/CoachShell";
 import { Icon } from "@/components/Icon";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/actions/require-user";
+import { asUser } from "@/lib/db/as-user";
 
 export default async function AlumnosPage() {
-  const supabase = await createClient();
-
-  const { data: students } = await supabase
-    .from("students")
-    .select("id, nombre, estado, objetivo, programa_id, semana_actual, nuevo")
-    .order("nuevo", { ascending: false })
-    .order("nombre");
+  // Conexión directa con las reglas de seguridad del usuario (ver as-user.ts).
+  const { user } = await requireUser();
+  const students = await asUser(user.id, (sql) => sql<
+    { id: string; nombre: string; estado: string; objetivo: string | null; programa_id: string | null; semana_actual: number; nuevo: boolean }[]
+  >`select id, nombre, estado, objetivo, programa_id, semana_actual, nuevo from students order by nuevo desc, nombre`);
 
   return (
     <CoachShell active="/alumnos">

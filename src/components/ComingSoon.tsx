@@ -11,9 +11,7 @@ export default function ComingSoon({ title, description }: { title: string; desc
           style={{
             fontSize: 12,
             fontWeight: 700,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-            color: "var(--accent)",
+            color: "var(--text)",
             marginBottom: 10,
           }}
         >

@@ -3,7 +3,8 @@ import CoachShell from "@/components/CoachShell";
 import { Crumbs } from "@/components/Crumbs";
 import { TextField, TextAreaField, SelectField, ErrorBanner } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/actions/require-user";
+import { asUser } from "@/lib/db/as-user";
 import { updateProgram } from "../../actions";
 
 export default async function EditarProgramaPage({
@@ -16,12 +17,12 @@ export default async function EditarProgramaPage({
   const { id } = await params;
   const { error } = await searchParams;
 
-  const supabase = await createClient();
-  const { data: program } = await supabase
-    .from("programs")
-    .select("id, nombre, descripcion, objetivo, nivel, duracion_semanas")
-    .eq("id", id)
-    .maybeSingle();
+  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+  const { user } = await requireUser();
+  // Conexión directa con las reglas de seguridad del usuario (ver as-user.ts).
+  const [program] = await asUser(user.id, (sql) => sql<
+    { id: string; nombre: string; descripcion: string | null; objetivo: string | null; nivel: string | null; duracion_semanas: number | null }[]
+  >`select id, nombre, descripcion, objetivo, nivel, duracion_semanas from programs where id = ${id}`);
 
   if (!program) notFound();
 
@@ -31,7 +32,7 @@ export default async function EditarProgramaPage({
     <CoachShell active="/programas">
       <div style={{ maxWidth: 480 }}>
         <Crumbs items={[{ label: "Programas", href: "/programas" }, { label: program.nombre, href: `/programas/${id}` }, { label: "Editar" }]} />
-        <h1 style={{ fontSize: 20, margin: "0 0 20px" }}>Editar programa</h1>
+        <h1 style={{ margin: "0 0 20px" }}>Editar programa</h1>
 
         <ErrorBanner message={error} />
 

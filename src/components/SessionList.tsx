@@ -27,6 +27,7 @@ export type SessionListItem = {
   id: string;
   nombre: string;
   objetivo: string | null;
+  dia?: string | null;
   bloques: number;
   ejercicios: number;
   editHref: string;
@@ -116,7 +117,7 @@ function SortableSessionCard({ item, numero }: { item: SessionListItem; numero: 
       >
         <Icon name="grip" size={14} />
       </button>
-      <div className="session-day">Día {numero}</div>
+      <div className="session-day">{item.dia || `Día ${numero}`}</div>
       <div className="session-info">
         <div className="name">{item.nombre}</div>
         <div className="meta">

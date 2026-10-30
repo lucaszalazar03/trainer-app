@@ -15,7 +15,7 @@ export default async function NuevoEquipoPage({
     <CoachShell active="/equipos">
       <div style={{ maxWidth: 480 }}>
         <Crumbs items={[{ label: "Equipos", href: "/equipos" }, { label: "Nuevo equipo" }]} />
-        <h1 style={{ fontSize: 20, margin: "0 0 20px" }}>Nuevo equipo</h1>
+        <h1 style={{ margin: "0 0 20px" }}>Nuevo equipo</h1>
 
         <ErrorBanner message={error} />
 

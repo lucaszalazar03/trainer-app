@@ -60,7 +60,12 @@ export async function signUp(formData: FormData) {
   });
 
   if (error) {
-    fail(error.message);
+    // Supabase limita cuántos mails de confirmación manda por hora. Mensaje
+    // claro en vez del texto técnico en inglés.
+    const msg = /rate limit/i.test(error.message)
+      ? "Hay muchos registros en este momento. Esperá unos minutos y probá de nuevo."
+      : error.message;
+    fail(msg);
   }
   // Supabase no da error si el email ya estaba registrado (para no revelar
   // qué emails existen): lo detectamos porque el usuario vuelve sin identidades.
@@ -69,5 +74,9 @@ export async function signUp(formData: FormData) {
   }
 
   after(() => notifyCoachNewStudent(nombreCompleto));
+  // Si en Supabase no se pide confirmar el mail, la cuenta ya viene con la
+  // sesión abierta: el alumno entra directo a la app, sin esperar ningún
+  // mail (y sin depender del límite de mails por hora de Supabase).
+  if (data?.session) redirect("/");
   redirect("/login?check_email=1");
 }

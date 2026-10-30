@@ -7,6 +7,8 @@ import { friendlyDbError } from "@/lib/db/friendly-error";
 import { listExerciseOptions, type ExerciseOption } from "@/lib/db/exercises";
 import { addExerciseToTarget, quickCreateExerciseAndAdd } from "../../session-actions";
 
+const norm = (t: string | null | undefined) => (t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
 export default async function AgregarEjercicioPage({
   searchParams,
 }: {
@@ -21,8 +23,8 @@ export default async function AgregarEjercicioPage({
   let loadError: string | null = null;
   try {
     const all = await listExerciseOptions(user.id);
-    const needle = q.trim().toLowerCase();
-    exercises = needle ? all.filter((ex) => ex.nombre.toLowerCase().includes(needle)) : all;
+    const needle = norm(q.trim());
+    exercises = needle ? all.filter((ex) => norm(ex.nombre).includes(needle)) : all;
   } catch (err) {
     loadError = friendlyDbError(err) ?? "No se pudo cargar tu biblioteca de ejercicios.";
   }
@@ -34,7 +36,7 @@ export default async function AgregarEjercicioPage({
     <CoachShell active="/programas">
       <div style={{ maxWidth: 560 }}>
         <Crumbs items={[{ label: isTemplateBlock ? "Volver a la plantilla" : "Volver a la sesión", href: back }]} />
-        <h1 style={{ fontSize: 20, margin: "0 0 4px" }}>
+        <h1 style={{ margin: "0 0 4px" }}>
           Agregar ejercicio {isWarmup ? "a entrada en calor" : isTemplateBlock ? "a la plantilla" : "al bloque"}
         </h1>
         <p style={{ color: "var(--text-dim)", fontSize: 13, margin: "0 0 20px" }}>

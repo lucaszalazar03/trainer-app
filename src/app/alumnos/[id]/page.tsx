@@ -7,10 +7,12 @@ import { TextField, TextAreaField, SelectField, ErrorBanner, SuccessBanner } fro
 import { AthleteFields } from "@/components/AthleteFields";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { SubmitButton } from "@/components/SubmitButton";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/actions/require-user";
+import { getDirectSql } from "@/lib/db/direct";
+import { friendlyDbError } from "@/lib/db/friendly-error";
 import { TIMEZONE } from "@/lib/date";
 import { updateStudent, deleteStudent, assignProgram } from "../actions";
-import { createPersonalProgram, importProgramAsPersonal, saveProgramAsTemplate } from "../rutina-actions";
+import { createPersonalProgram, importProgramAsPersonal, saveProgramAsTemplate, shareRoutineFromStudent } from "../rutina-actions";
 
 export default async function AlumnoDetailPage({
   params,
@@ -22,67 +24,142 @@ export default async function AlumnoDetailPage({
   const { id } = await params;
   const { error, saved } = await searchParams;
 
-  const supabase = await createClient();
+  const { user } = await requireUser();
+  const sql = getDirectSql();
 
-  // Las cuatro consultas sólo necesitan "id" (ya conocido por el param de
-  // la ruta), ninguna depende del resultado de otra — en paralelo en vez
-  // de una atrás de la otra, mismo criterio que en el editor de sesión.
-  const [{ data: student }, { data: programs }, { data: ultimoCheckin }, { data: pesosRaw }] = await Promise.all([
-    supabase
-      .from("students")
-      .select(
-        "id, nombre, email, objetivo, estado, notas, semana_actual, programa_id, edad, altura_cm, peso_kg, deporte, posicion, nuevo"
-      )
-      .eq("id", id)
-      .maybeSingle(),
-    // Programas visibles para asignar/importar acá: los generales de la
-    // biblioteca (owner_student_id null) + la rutina personal de este
-    // alumno si ya tiene una (para poder mostrarla como seleccionada).
-    supabase
-      .from("programs")
-      .select("id, nombre, duracion_semanas, owner_student_id")
-      .or(`owner_student_id.is.null,owner_student_id.eq.${id}`)
-      .order("nombre"),
-    supabase
-      .from("checkins")
-      .select("fecha, energia, dolor, sueno")
-      .eq("student_id", id)
-      .order("fecha", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    // Los pesos que fue cargando en sus entrenamientos (ver TrainingSession/
-    // logTraining). Traemos los últimos 150 registros (de cualquier
-    // ejercicio) y los agrupamos por ejercicio acá abajo — alcanza de sobra
-    // para mostrar la evolución reciente sin necesitar una consulta por
-    // ejercicio.
-    supabase
-      .from("exercise_logs")
-      .select("exercise_id, peso_kg, fecha, exercises(nombre)")
-      .eq("student_id", id)
-      .order("fecha", { ascending: false })
-      .limit(150),
-  ]);
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(id)) notFound();
+
+  // Antes todo esto iba por supabase-js (API REST), que en el plan chico de
+  // Supabase se corta por timeout: la ficha cargaba a medias y los botones
+  // parecían no responder. Ahora va por conexión directa; como no pasa por
+  // RLS, todo filtra a mano por coach_id = user.id.
+  type Student = {
+    id: string; nombre: string; email: string | null; objetivo: string | null; estado: string;
+    notas: string | null; semana_actual: number | null; programa_id: string | null; edad: number | null;
+    altura_cm: number | null; peso_kg: number | null; deporte: string | null; posicion: string | null; nuevo: boolean;
+  };
+  type Prog = { id: string; nombre: string; duracion_semanas: number | null; owner_student_id: string | null; owner_nombre: string | null };
+  let student = null as Student | null;
+  let programs: Prog[] = [];
+  let ultimoCheckin = null as { fecha: string; energia: number; dolor: number; sueno: number } | null;
+  let pesosRaw: { exercise_id: string; peso_kg: number; fecha: string; nombre: string | null }[] = [];
+  // Otros alumnos con rutina asignada: para "usar la misma rutina que…" y
+  // para mostrar con quién comparte la rutina actual.
+  let otherStudents: { id: string; nombre: string; programa_id: string; programa_nombre: string }[] = [];
+  let loadError: string | null = null;
+
+  try {
+    const [stRows, progRows, ciRows, pesoRows, otherRows] = await Promise.all([
+      sql<Student[]>`
+        select id, nombre, email, objetivo, estado, notas, semana_actual, programa_id, edad, altura_cm, peso_kg, deporte, posicion, nuevo
+        from students where id = ${id} and coach_id = ${user.id}
+      `,
+      // Generales (biblioteca) + personales de este alumno + la que tenga
+      // asignada ahora aunque sea la rutina personal de OTRO alumno (compartida).
+      sql<Prog[]>`
+        select p.id, p.nombre, p.duracion_semanas, p.owner_student_id, o.nombre as owner_nombre
+        from programs p left join students o on o.id = p.owner_student_id
+        where p.coach_id = ${user.id}
+          and (p.owner_student_id is null or p.owner_student_id = ${id}
+               or p.id = (select programa_id from students where id = ${id} and coach_id = ${user.id}))
+        order by p.nombre
+      `,
+      sql<{ fecha: string; energia: number; dolor: number; sueno: number }[]>`
+        select to_json(c.fecha)#>>'{}' as fecha, c.energia, c.dolor, c.sueno from checkins c
+        join students s on s.id = c.student_id
+        where c.student_id = ${id} and s.coach_id = ${user.id}
+        order by c.fecha desc limit 1
+      `,
+      sql<{ exercise_id: string; peso_kg: number; fecha: string; nombre: string | null }[]>`
+        select l.exercise_id, l.peso_kg::float8 as peso_kg, to_json(l.fecha)#>>'{}' as fecha, e.nombre from exercise_logs l
+        join students s on s.id = l.student_id
+        left join exercises e on e.id = l.exercise_id
+        where l.student_id = ${id} and s.coach_id = ${user.id}
+        order by l.fecha desc limit 150
+      `,
+      sql<{ id: string; nombre: string; programa_id: string; programa_nombre: string }[]>`
+        select s.id, s.nombre, s.programa_id, p.nombre as programa_nombre
+        from students s join programs p on p.id = s.programa_id
+        where s.coach_id = ${user.id} and s.id <> ${id}
+        order by s.nombre
+      `,
+    ]);
+    student = stRows[0] ?? null;
+    programs = progRows;
+    ultimoCheckin = ciRows[0] ?? null;
+    pesosRaw = pesoRows;
+    otherStudents = otherRows;
+  } catch (err) {
+    loadError = friendlyDbError(err) ?? "No se pudo cargar el alumno.";
+  }
+
+  if (loadError) {
+    return (
+      <CoachShell active="/alumnos">
+        <div style={{ maxWidth: 480 }}>
+          <Crumbs items={[{ label: "Alumnos", href: "/alumnos" }, { label: "Alumno" }]} />
+          <div className="banner danger">{loadError}</div>
+          <Link href={`/alumnos/${id}`} className="btn primary">
+            Reintentar
+          </Link>
+        </div>
+      </CoachShell>
+    );
+  }
 
   if (!student) notFound();
 
   // Alumno que se registró solo: al abrir su ficha deja de figurar como "Nuevo".
   if (student.nuevo) {
-    await supabase.from("students").update({ nuevo: false }).eq("id", id);
+    await sql`update students set nuevo = false where id = ${id} and coach_id = ${user.id}`.catch(() => {});
   }
 
   // Agrupa por ejercicio conservando el orden (ya viene fecha desc), y se
   // queda con los últimos 5 valores de cada uno para no saturar la tarjeta.
   const pesosPorEjercicio = new Map<string, { nombre: string; entradas: { peso: number; fecha: string }[] }>();
-  for (const row of pesosRaw ?? []) {
-    const nombre = (row.exercises as unknown as { nombre: string } | null)?.nombre ?? "Ejercicio";
+  for (const row of pesosRaw) {
+    const nombre = row.nombre ?? "Ejercicio";
     if (!pesosPorEjercicio.has(row.exercise_id)) pesosPorEjercicio.set(row.exercise_id, { nombre, entradas: [] });
     const grupo = pesosPorEjercicio.get(row.exercise_id)!;
-    if (grupo.entradas.length < 5) grupo.entradas.push({ peso: row.peso_kg, fecha: row.fecha });
+    if (grupo.entradas.length < 5) grupo.entradas.push({ peso: Number(row.peso_kg), fecha: String(row.fecha) });
   }
 
-  const currentProgram = programs?.find((p) => p.id === student.programa_id);
+  const currentProgram = programs.find((p) => p.id === student.programa_id);
   const isPersonalRoutine = currentProgram?.owner_student_id === id;
-  const generalPrograms = (programs ?? []).filter((p) => p.owner_student_id === null);
+  // Rutina personal de otro alumno que este alumno usa compartida.
+  const sharedFromOwner = currentProgram && currentProgram.owner_student_id && !isPersonalRoutine ? currentProgram.owner_nombre : null;
+  const companions = otherStudents.filter((o) => o.programa_id === student.programa_id);
+  const shareable = otherStudents.filter((o) => o.programa_id !== student.programa_id);
+  const generalPrograms = programs.filter((p) => p.owner_student_id === null);
+
+  // Formulario "usar la misma rutina que otro alumno" (va en los dos casos:
+  // con o sin rutina asignada).
+  const shareForm =
+    shareable.length > 0 ? (
+      <form
+        action={shareRoutineFromStudent.bind(null, id)}
+        style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}
+      >
+        <select name="source_student_id" defaultValue="" style={{ flex: 1, minWidth: 180 }}>
+          <option value="" disabled>
+            Usar la misma rutina que…
+          </option>
+          {shareable.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.nombre} ({o.programa_nombre})
+            </option>
+          ))}
+        </select>
+        <ConfirmSubmitButton
+          className="btn"
+          confirmMessage={`¿Que ${student.nombre} use la MISMA rutina que el alumno elegido? Desde ahora, lo que cambies en esa rutina lo van a ver los dos.`}
+        >
+          <Icon name="users" size={14} />
+          Compartir rutina
+        </ConfirmSubmitButton>
+      </form>
+    ) : null;
 
   const updateWithId = updateStudent.bind(null, id);
   const deleteWithId = deleteStudent.bind(null, id);
@@ -91,7 +168,7 @@ export default async function AlumnoDetailPage({
     <CoachShell active="/alumnos">
       <div style={{ maxWidth: 480 }}>
         <Crumbs items={[{ label: "Alumnos", href: "/alumnos" }, { label: student.nombre }]} />
-        <h1 style={{ fontSize: 20, margin: "0 0 6px" }}>{student.nombre}</h1>
+        <h1 style={{ margin: "0 0 6px" }}>{student.nombre}</h1>
 
         {(student.edad || student.altura_cm || student.peso_kg || student.deporte) && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 20 }}>
@@ -152,10 +229,21 @@ export default async function AlumnoDetailPage({
                 {" "}
                 — actualmente en <strong style={{ color: "var(--text)" }}>{currentProgram.nombre}</strong>, semana{" "}
                 {student.semana_actual}
-                {isPersonalRoutine ? " · rutina personal" : " · programa general"}
+                {isPersonalRoutine
+                  ? " · rutina personal"
+                  : sharedFromOwner
+                    ? ` · rutina compartida con ${sharedFromOwner}`
+                    : " · programa general"}
               </span>
             )}
           </div>
+
+          {currentProgram && companions.length > 0 && (
+            <div className="banner" style={{ fontSize: 12.5, marginBottom: 12, color: "var(--text-dim)" }}>
+              <Icon name="users" size={13} /> También usa esta rutina: <strong style={{ color: "var(--text)" }}>{companions.map((c) => c.nombre).join(", ")}</strong>.
+              Lo que cambies se actualiza para todos.
+            </div>
+          )}
 
           {currentProgram && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
@@ -190,6 +278,8 @@ export default async function AlumnoDetailPage({
                 <p style={{ color: "var(--text-faint)", fontSize: 11.5, margin: 0 }}>
                   No borra la rutina actual, sólo deja de estar asignada a {student.nombre}.
                 </p>
+
+                {shareForm}
 
                 <form
                   action={createPersonalProgram.bind(null, id)}
@@ -262,6 +352,8 @@ export default async function AlumnoDetailPage({
             </details>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {shareForm}
+
               <form
                 action={createPersonalProgram.bind(null, id)}
                 style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}

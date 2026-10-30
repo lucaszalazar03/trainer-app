@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Big_Shoulders, Work_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Sofia_Sans, Sofia_Sans_Extra_Condensed } from "next/font/google";
 import "./globals.css";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import { SplashScreen } from "@/components/SplashScreen";
@@ -10,25 +10,18 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 // dominio, precargadas y sin bloquear el render — más rápido que el
 // <link rel="stylesheet"> anterior, sobre todo en 4G/celular.
 //
-// Identidad nueva (aprobada): Big Shoulders Display en títulos en vez de
-// Oswald, Work Sans en vez de IBM Plex Sans para el texto — se mantiene
-// IBM Plex Mono para los datos (pesos, series, horarios).
-const bigShouldersDisplay = Big_Shoulders({
+// Una sola familia: Sofia Sans Extra Condensed para títulos y números grandes
+// (series, repeticiones, kilos) y Sofia Sans para el texto.
+const sofiaDisplay = Sofia_Sans_Extra_Condensed({
   subsets: ["latin"],
-  weight: ["700", "800"],
+  weight: ["800"],
   variable: "--font-display-nf",
   display: "swap",
 });
-const workSans = Work_Sans({
+const sofiaSans = Sofia_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-body-nf",
-  display: "swap",
-});
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["500", "600"],
-  variable: "--font-mono-nf",
   display: "swap",
 });
 
@@ -72,7 +65,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${bigShouldersDisplay.variable} ${workSans.variable} ${ibmPlexMono.variable}`}>
+    <html lang="es" className={`${sofiaDisplay.variable} ${sofiaSans.variable}`}>
       <head>
         {/*
           El campo appleWebApp.capable de Next sólo emite la etiqueta

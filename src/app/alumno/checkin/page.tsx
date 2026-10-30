@@ -2,6 +2,7 @@ import AlumnoShell from "@/components/AlumnoShell";
 import { RangeField } from "@/components/RangeField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { requireStudent } from "@/lib/actions/require-student";
+import { asUser } from "@/lib/db/as-user";
 import { inicioDeHoyArgentina } from "@/lib/date";
 import { submitCheckin } from "../actions";
 
@@ -11,22 +12,20 @@ export default async function CheckinPage({
   searchParams: Promise<{ saved?: string }>;
 }) {
   const { saved } = await searchParams;
-  const { supabase, student } = await requireStudent();
+  const { user, student } = await requireStudent();
 
   const startOfToday = inicioDeHoyArgentina();
 
-  const { data: checkinHoy } = await supabase
-    .from("checkins")
-    .select("energia, dolor, sueno")
-    .eq("student_id", student.id)
-    .gte("fecha", startOfToday.toISOString())
-    .maybeSingle();
+  // Conexión directa con las reglas de seguridad del alumno (ver as-user.ts).
+  const [checkinHoy] = await asUser(user.id, (sql) => sql<{ energia: number; dolor: number; sueno: number }[]>`
+    select energia, dolor, sueno from checkins
+    where student_id = ${student.id} and fecha >= ${startOfToday.toISOString()} limit 1`);
 
   return (
     <AlumnoShell active="/alumno/checkin" nombre={student.nombre}>
       <div className="content-head" style={{ marginBottom: 16 }}>
         <div>
-          <h1 style={{ fontSize: 20 }}>Check-in de hoy</h1>
+          <h1>Check-in de hoy</h1>
           <div className="sub">Contale a tu coach cómo llegás a entrenar.</div>
         </div>
       </div>

@@ -2,6 +2,7 @@ import CoachShell from "@/components/CoachShell";
 import { TextField, ErrorBanner, SuccessBanner } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { requireUser } from "@/lib/actions/require-user";
+import { asUser } from "@/lib/db/as-user";
 import { updateProfile, changePassword } from "./actions";
 import { PushTestCard } from "@/components/PushTestCard";
 
@@ -16,9 +17,11 @@ export default async function ConfiguracionPage({
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const { saved, error } = await searchParams;
-  const { supabase, user } = await requireUser();
+  const { user } = await requireUser();
 
-  const { data: coach } = await supabase.from("coaches").select("nombre, email").eq("id", user.id).maybeSingle();
+  // Conexión directa con las reglas de seguridad del usuario (ver as-user.ts).
+  const [coach] = await asUser(user.id, (sql) => sql<{ nombre: string | null; email: string | null }[]>`
+    select nombre, email from coaches where id = ${user.id}`);
 
   return (
     <CoachShell active="/configuracion">

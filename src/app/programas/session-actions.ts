@@ -166,7 +166,11 @@ export async function reorderBlockExercises(blockId: string, back: string, order
   const { user } = await requireUser();
   const sql = getDirectSql();
 
-  const payload = JSON.stringify(orderedIds.map((id, orden) => ({ id, orden })));
+  // Va como objeto (no string): la librería postgres ya lo serializa a JSON.
+  // Antes se mandaba JSON.stringify(...) y quedaba doblemente codificado
+  // ("cannot call json_to_recordset on a scalar"): el reorden fallaba
+  // siempre sin avisar.
+  const payload = sql.json(orderedIds.map((id, orden) => ({ id, orden })));
 
   try {
     await sql`
@@ -243,7 +247,11 @@ export async function reorderWarmupExercises(sessionId: string, back: string, or
   const { user } = await requireUser();
   const sql = getDirectSql();
 
-  const payload = JSON.stringify(orderedIds.map((id, orden) => ({ id, orden })));
+  // Va como objeto (no string): la librería postgres ya lo serializa a JSON.
+  // Antes se mandaba JSON.stringify(...) y quedaba doblemente codificado
+  // ("cannot call json_to_recordset on a scalar"): el reorden fallaba
+  // siempre sin avisar.
+  const payload = sql.json(orderedIds.map((id, orden) => ({ id, orden })));
 
   try {
     await sql`

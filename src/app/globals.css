@@ -2,11 +2,8 @@
 
 /* ============ TOKENS ============ */
 :root {
-  /* Paleta "Performance Neón" — pedida explícitamente por Lucas después de
-     ver la vista previa (fondo casi negro + verde lima tipo Nike), en
-     reemplazo del verde más oscuro (#34a65f) que se había aprobado antes.
-     Queda documentado acá el cambio de dirección por si hay que volver
-     atrás. */
+  /* Paleta original "Performance Neón" (fondo casi negro + verde lima),
+     restaurada a pedido de Lucas sobre el formato nuevo. */
   --bg: #0d0d0d;
   --bg-grade: #121212;
   --surface: #1e1e1e;
@@ -17,25 +14,39 @@
   --text: #ffffff;
   --text-dim: #a1a1aa;
   --text-faint: #71717a;
+  /* Franjas oscuras: barra superior, navegación y bloques protagonistas */
+  --ink: #161616;
+  --ink-2: #222222;
+  --on-ink: #ffffff;
+  --on-ink-dim: #a1a1aa;
+  /* Verde lima: la acción principal de cada pantalla */
   --accent: #ccff00;
   --accent-ink: #0d1200;
   --accent-dim: #1e2600;
+  /* Azul: links y acciones secundarias */
   --accent-2: #5b9bf5;
   --accent-2-dim: #182c4a;
+  /* Estados */
+  --ok: #ccff00;
+  --ok-dim: #1e2600;
   --warn: #f0ab3d;
   --warn-dim: #3c2c10;
   --danger: #f2575f;
   --danger-dim: #3a1518;
-  /* Tarjetas con esquinas suavemente redondeadas (8–12px), como pide el
-     brief de diseño — un toque más grande que la escala angulosa anterior. */
-  --radius-s: 6px;
-  --radius-m: 9px;
-  --radius-l: 12px;
-  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
-  --shadow-pop: 0 20px 60px -20px rgba(0, 0, 0, 0.7);
-  --font-display: var(--font-display-nf), system-ui, sans-serif;
+  /* Discos de la barra (colores olímpicos, como le gustan a Lucas) */
+  --plate-red: #c8202c;
+  --plate-blue: #1d57b8;
+  --plate-yellow: #f2b705;
+  --plate-green: #1c8a4c;
+  --plate-white: #fdfdfb;
+  --steel: #8d939c;
+  --radius-s: 3px;
+  --radius-m: 4px;
+  --radius-l: 6px;
+  --shadow-pop: 0 18px 48px -18px rgba(0, 0, 0, 0.5);
+  --font-display: var(--font-display-nf), "Arial Narrow", sans-serif;
   --font-body: var(--font-body-nf), system-ui, -apple-system, sans-serif;
-  --font-mono: var(--font-mono-nf), ui-monospace, monospace;
+  --font-data: var(--font-body-nf), system-ui, sans-serif;
 }
 
 *,
@@ -51,24 +62,25 @@ body {
 
 body {
   margin: 0;
-  /* Fondo plano, sin halos de degradé — era justo una de las cosas que
-     hacían que la app se sintiera "hecha con IA". */
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 14.5px;
-  line-height: 1.5;
+  font-size: 15.5px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4 {
   font-family: var(--font-display);
-  /* Big Shoulders Display sólo trae los pesos 700/800 (ver layout.tsx) */
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.005em;
   margin: 0;
   text-wrap: balance;
+}
+
+h1 {
+  font-size: 46px;
 }
 
 p {
@@ -93,12 +105,22 @@ a {
 }
 
 ::selection {
-  background: var(--accent-dim);
-  color: var(--accent);
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.topbar :focus-visible,
+.bottom-nav :focus-visible {
+  outline-color: var(--accent);
 }
 
 .num {
-  font-family: var(--font-mono);
+  font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
 }
 
@@ -128,13 +150,12 @@ svg {
      estado / notch del iPhone cuando la app corre instalada en modo
      standalone (viewportFit: cover) — si no, el wordmark y el botón
      "Salir" quedan tapados por la barra de estado y no se pueden tocar. */
-  padding: calc(12px + env(safe-area-inset-top)) 20px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
+  padding: calc(10px + env(safe-area-inset-top)) 20px 10px;
+  background: var(--ink);
+  color: var(--on-ink);
   position: sticky;
   top: 0;
   z-index: 40;
-  backdrop-filter: blur(8px);
 }
 
 .nav-toggle-checkbox {
@@ -145,17 +166,16 @@ svg {
   display: none;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-s);
-  color: var(--text-dim);
+  color: var(--on-ink);
   cursor: pointer;
   flex: 0 0 auto;
 }
 
 .nav-toggle-btn:hover {
-  background: var(--surface-2);
-  color: var(--text);
+  background: var(--ink-2);
 }
 
 .nav-backdrop {
@@ -170,8 +190,8 @@ svg {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  background: var(--bg);
+  gap: 10px;
+  background: var(--ink);
   opacity: 1;
   transition: opacity 0.35s ease;
 }
@@ -181,26 +201,18 @@ svg {
   pointer-events: none;
 }
 
-/* Antes tenía el mismo cuadradito de acento al lado del nombre que tenía el
-   wordmark del topbar (ver comentario en .wordmark más abajo) — se sacó de
-   acá también y se lo reemplazó por el mismo lenguaje de marca: el nombre
-   solo, con un subrayado fino en el color de acento que se dibuja de
-   izquierda a derecha. Más prolijo que un ícono decorativo suelto, y
-   consistente con el wordmark que ya se ve en cada pantalla. */
+/* El nombre solo, con la barra que se dibuja de izquierda a derecha debajo:
+   el único momento animado de la apertura de la app. */
 .splash-word {
   position: relative;
   display: inline-block;
   font-family: var(--font-display);
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--text);
-  padding-bottom: 11px;
-  animation: splash-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2);
-}
-
-.splash-word .z {
-  color: var(--accent);
+  font-size: min(15vw, 58px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--on-ink);
+  padding-bottom: 14px;
 }
 
 .splash-word::after {
@@ -209,33 +221,18 @@ svg {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 2px;
+  height: 5px;
   background: var(--accent);
   transform: scaleX(0);
   transform-origin: left;
-  animation: splash-underline 0.55s 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: splash-underline 0.55s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .splash-tagline {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 500;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  opacity: 0;
-  animation: splash-tagline-in 0.4s 0.6s ease forwards;
-}
-
-@keyframes splash-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.85);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  color: var(--on-ink-dim);
 }
 
 @keyframes splash-underline {
@@ -244,68 +241,33 @@ svg {
   }
 }
 
-@keyframes splash-tagline-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .splash-word {
-    animation: none;
-  }
   .splash-word::after {
     animation: none;
     transform: scaleX(1);
   }
-  .splash-tagline {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
 }
 
-/* Antes llevaba un cuadradito de acento al lado del nombre — lo sacamos y
-   lo reemplazamos por un subrayado fino en el color de acento, más sobrio
-   y "de marca" que un ícono decorativo suelto. */
 .wordmark {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
   font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--text);
+  font-size: 27px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--on-ink);
   flex: 0 0 auto;
   text-decoration: none;
-  position: relative;
-  padding-bottom: 5px;
-}
-
-.wordmark::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: var(--accent);
 }
 
 .wordmark small {
   font-family: var(--font-body);
   font-weight: 500;
-  color: var(--text-faint);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-left: 2px;
+  color: var(--on-ink-dim);
+  font-size: 13px;
+  letter-spacing: 0;
 }
 
 .topbar-spacer {
@@ -318,11 +280,10 @@ svg {
   gap: 8px;
   width: 100%;
   padding: 9px 20px;
-  background: var(--accent-dim);
-  color: var(--accent);
-  font-size: 12px;
+  background: var(--accent-2-dim);
+  color: var(--accent-2);
+  font-size: 13.5px;
   font-weight: 600;
-  border-bottom: 1px solid var(--border);
   text-align: left;
 }
 
@@ -343,11 +304,10 @@ svg {
   gap: 8px;
   width: 100%;
   padding: 9px 20px;
-  background: var(--accent-dim);
-  color: var(--accent);
-  font-size: 12px;
+  background: var(--accent-2-dim);
+  color: var(--accent-2);
+  font-size: 13.5px;
   font-weight: 600;
-  border-bottom: 1px solid var(--border);
   text-align: left;
 }
 
@@ -360,12 +320,12 @@ svg {
 }
 
 .install-banner-btn {
-  border: 1px solid var(--accent);
+  border: 1px solid var(--accent-2);
   background: transparent;
   color: inherit;
-  border-radius: 999px;
+  border-radius: var(--radius-s);
   padding: 4px 12px;
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
@@ -394,40 +354,161 @@ svg {
   opacity: 1;
 }
 
+/* ============ INGRESO (/login) ============
+   Dos mitades en escritorio: la marca sobre la franja oscura y el formulario
+   sobre el cemento. En el celular la marca queda arriba y el formulario abajo. */
+.auth {
+  min-height: 100vh;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+}
+
+.auth-brand {
+  background: var(--ink);
+  color: var(--on-ink);
+  padding: 48px 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+.auth-word {
+  font-family: var(--font-display);
+  font-size: clamp(56px, 7.6vw, 132px);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+}
+
+.auth-tag {
+  color: var(--on-ink-dim);
+  font-size: 18px;
+}
+
+.auth-brand .week-bar {
+  max-width: 420px;
+  margin-bottom: 18px;
+}
+
+.auth-credit {
+  color: var(--on-ink-dim);
+  font-size: 13px;
+  margin-top: 26px;
+}
+
+.auth-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 40px 28px;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 22px;
+  border-bottom: 1px solid var(--border-strong);
+  margin-bottom: 24px;
+}
+
+.auth-tab {
+  padding: 0 0 8px;
+  border: none;
+  border-bottom: 4px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-faint);
+}
+
+.auth-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.auth-note {
+  color: var(--text-dim);
+  font-size: 14px;
+  margin: 0 0 14px;
+}
+
+.auth-row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.auth-row3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 820px) {
+  .auth {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .auth-brand {
+    padding: calc(28px + env(safe-area-inset-top)) 24px 24px;
+    gap: 6px;
+  }
+  .auth-brand .week-bar,
+  .auth-credit {
+    display: none;
+  }
+  .auth-word {
+    font-size: min(15vw, 92px);
+  }
+  .auth-panel {
+    justify-content: flex-start;
+    padding: 26px 24px calc(32px + env(safe-area-inset-bottom));
+  }
+}
+
 /* ============ /bienvenida (pantalla pública de "descarga") ============ */
 .welcome {
   min-height: 100vh;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
   gap: 18px;
-  padding: 24px;
-  text-align: center;
+  padding: calc(28px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));
+  background: var(--ink);
+  color: var(--on-ink);
 }
 
 .welcome-card {
   width: 100%;
-  max-width: 380px;
+  max-width: 420px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
 }
 
 .welcome-icon {
   border-radius: var(--radius-l);
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .welcome-wordmark {
-  justify-content: center;
-  font-size: 28px;
+  font-size: min(15vw, 76px);
+  line-height: 0.95;
 }
 
 .welcome-tagline {
-  color: var(--text-dim);
-  font-size: 13.5px;
-  margin: 14px 0 30px;
+  color: var(--on-ink-dim);
+  font-size: 17px;
+  margin: 10px 0 30px;
 }
 
 .welcome-steps {
@@ -436,10 +517,9 @@ svg {
   gap: 10px;
   margin: 0 0 20px;
   padding: 16px;
-  border: 1px solid var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
-  text-align: left;
+  color: var(--text-dim);
   list-style: none;
 }
 
@@ -447,8 +527,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13.5px;
-  color: var(--text-dim);
+  font-size: 14.5px;
 }
 
 .welcome-steps li strong {
@@ -467,37 +546,37 @@ svg {
 .welcome-skip {
   display: block;
   margin-top: 14px;
-  font-size: 12.5px;
-  color: var(--text-faint);
+  font-size: 14.5px;
+  color: var(--on-ink-dim);
   text-decoration: underline;
 }
 
 .welcome-section {
   width: 100%;
-  margin-bottom: 22px;
+  margin-bottom: 26px;
 }
 
 .welcome-step-title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-  text-align: left;
+  gap: 9px;
+  margin-bottom: 12px;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--on-ink);
 }
 
 .welcome-step-num {
   display: inline-grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   background: var(--accent);
-  color: #0d0d0d;
-  font-size: 11px;
-  font-weight: 800;
+  color: var(--ink);
+  font-size: 19px;
 }
 
 .welcome-note {
@@ -506,13 +585,11 @@ svg {
   align-items: flex-start;
   margin: 0 0 12px;
   padding: 10px 12px;
-  border: 1px solid var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
-  font-size: 12.5px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.4;
   color: var(--text-dim);
-  text-align: left;
 }
 
 .welcome-note strong {
@@ -526,20 +603,19 @@ svg {
 }
 
 .welcome-footer {
-  color: var(--text-faint);
-  font-size: 10px;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  opacity: 0.6;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  color: var(--on-ink-dim);
+  font-size: 13px;
 }
 
 .topbar-user {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 12.5px;
-  color: var(--text-dim);
+  font-size: 13.5px;
+  color: var(--on-ink-dim);
   position: relative;
 }
 
@@ -557,9 +633,9 @@ svg {
 }
 
 .avatar-circle.sm {
-  width: 30px;
-  height: 30px;
-  font-size: 13px;
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
 }
 
 .account-backdrop {
@@ -579,7 +655,7 @@ svg {
   top: 100%;
   right: 0;
   margin-top: 10px;
-  min-width: 195px;
+  min-width: 200px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-m);
@@ -596,7 +672,7 @@ svg {
 
 .account-menu-name {
   padding: 8px 10px 7px;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text);
   border-bottom: 1px solid var(--border);
@@ -608,12 +684,12 @@ svg {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 8px 10px;
-  border-radius: 7px;
+  padding: 9px 10px;
+  border-radius: var(--radius-s);
   border: none;
   background: none;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 500;
   color: var(--text-dim);
   text-align: left;
@@ -649,34 +725,33 @@ main {
 }
 
 .sidebar {
-  width: 210px;
+  width: 216px;
   flex: 0 0 auto;
   border-right: 1px solid var(--border);
   padding: 16px 10px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  background: rgba(255, 255, 255, 0.008);
+  background: var(--surface);
 }
 
 .side-link {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
+  gap: 11px;
+  padding: 10px 12px;
   border-radius: var(--radius-s);
   color: var(--text-dim);
   background: none;
   border: none;
   text-align: left;
   width: 100%;
-  font-size: 13.5px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   text-decoration: none;
 }
 
 .side-link svg {
-  opacity: 0.8;
   flex: 0 0 auto;
 }
 
@@ -686,29 +761,26 @@ main {
 }
 
 .side-link.active {
-  background: var(--surface-2);
-  color: var(--text);
-  box-shadow: 0 0 0 1px var(--border) inset;
+  background: var(--ink);
+  color: var(--on-ink);
 }
 
 .side-link.active svg {
   color: var(--accent);
-  opacity: 1;
 }
 
 .sidebar-foot {
   margin-top: auto;
-  padding: 10px 12px;
-  font-size: 11px;
+  padding: 14px 12px 10px;
+  font-size: 13px;
   color: var(--text-faint);
   border-top: 1px solid var(--border);
-  padding-top: 14px;
 }
 
 .content {
   flex: 1;
   min-width: 0;
-  padding: 26px 30px 60px;
+  padding: 28px 34px 60px;
   overflow: auto;
 }
 
@@ -717,18 +789,15 @@ main {
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 22px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
 }
 
-.content-head h1 {
-  font-size: 26px;
-}
-
 .content-head .sub {
-  color: var(--text-faint);
-  font-size: 13px;
-  margin-top: 4px;
+  color: var(--text-dim);
+  font-size: 15px;
+  margin-top: 6px;
+  max-width: 70ch;
 }
 
 .crumbs {
@@ -736,7 +805,7 @@ main {
   align-items: center;
   gap: 6px;
   color: var(--text-faint);
-  font-size: 12.5px;
+  font-size: 13.5px;
   margin-bottom: 10px;
   text-decoration: none;
 }
@@ -760,22 +829,21 @@ main {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 9px 16px;
+  padding: 10px 16px;
   border-radius: var(--radius-s);
   border: 1px solid var(--border-strong);
-  background: var(--surface-2);
+  background: var(--surface);
   color: var(--text);
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 14.5px;
   white-space: nowrap;
-  transition: 0.12s;
+  transition: background-color 0.12s, border-color 0.12s;
   text-decoration: none;
   cursor: pointer;
 }
 
 .btn:hover {
   background: var(--surface-3);
-  border-color: var(--border-strong);
 }
 
 .btn.primary {
@@ -785,7 +853,8 @@ main {
 }
 
 .btn.primary:hover {
-  filter: brightness(1.08);
+  background: #a31823;
+  border-color: #a31823;
 }
 
 .btn.ghost {
@@ -794,7 +863,7 @@ main {
 }
 
 .btn.ghost:hover {
-  background: var(--surface-2);
+  background: var(--surface-3);
 }
 
 .btn.danger {
@@ -809,13 +878,13 @@ main {
 
 .btn.sm {
   padding: 6px 11px;
-  font-size: 12px;
-  border-radius: 7px;
+  font-size: 13.5px;
+  border-radius: var(--radius-s);
 }
 
 .btn.icon {
   padding: 7px;
-  border-radius: 7px;
+  border-radius: var(--radius-s);
 }
 
 .btn:disabled {
@@ -834,7 +903,6 @@ main {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-m);
-  box-shadow: var(--shadow-card);
 }
 
 .card-pad {
@@ -844,10 +912,6 @@ main {
 .grid {
   display: grid;
   gap: 14px;
-}
-
-.g-stats {
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
 .g-2 {
@@ -864,32 +928,35 @@ main {
   }
 }
 
+/* Tira de números del resumen del coach: una sola banda oscura partida por
+   líneas, no una caja por número. */
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  background: var(--ink);
+  color: var(--on-ink);
+  border-radius: var(--radius-m);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
 .stat {
-  padding: 16px 18px;
+  padding: 14px 18px 12px;
+  box-shadow: -1px 0 0 var(--ink-2);
 }
 
 .stat .k {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-faint);
-  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--on-ink-dim);
+  line-height: 1.2;
 }
 
 .stat .v {
-  font-family: var(--font-mono);
-  font-size: 30px;
-  font-weight: 600;
-  margin-top: 8px;
-  color: var(--text);
-}
-
-.stat .v.accent {
-  color: var(--accent);
-}
-
-.stat .v.blue {
-  color: var(--accent-2);
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat .v.warn {
@@ -900,16 +967,15 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 999px;
-  letter-spacing: 0.02em;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-s);
 }
 
 .badge.green {
-  background: var(--accent-dim);
-  color: var(--accent);
+  background: var(--ok-dim);
+  color: var(--ok);
 }
 
 .badge.blue {
@@ -942,21 +1008,36 @@ main {
   color: inherit;
 }
 
-.list-row:hover {
+a.list-row:hover {
   background: var(--surface-2);
+}
+
+/* Filas separadas por una línea, como una planilla */
+.row-list {
+  display: grid;
+}
+
+.row-list .list-row {
+  padding: 10px 2px;
+  border-radius: 0;
+  border-top: 1px solid var(--border);
+}
+
+.row-list .list-row:first-child {
+  border-top: none;
 }
 
 .avatar {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-s);
   background: var(--surface-3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--text-dim);
+  font-weight: 800;
+  font-size: 19px;
+  color: var(--text);
   flex: 0 0 auto;
   font-family: var(--font-display);
 }
@@ -964,38 +1045,40 @@ main {
 .avatar.lg {
   width: 56px;
   height: 56px;
-  border-radius: 14px;
-  font-size: 18px;
+  font-size: 30px;
 }
 
 .avatar.sm {
   width: 26px;
   height: 26px;
-  border-radius: 8px;
-  font-size: 10.5px;
+  font-size: 15px;
 }
 
 .empty {
-  padding: 40px 20px;
-  text-align: center;
-  color: var(--text-faint);
+  padding: 24px 20px;
+  color: var(--text-dim);
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-m);
-  font-size: 13.5px;
+  font-size: 15px;
 }
 
 .empty svg {
-  margin: 0 auto 10px;
-  opacity: 0.5;
+  margin: 0 0 10px;
+  opacity: 0.6;
 }
 
 input:not([type="checkbox"]):not([type="radio"]), textarea, select {
   width: 100%;
-  background: var(--surface-2);
+  background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-s);
-  padding: 9px 11px;
+  padding: 10px 11px;
   color: var(--text);
+}
+
+input:disabled {
+  background: var(--surface-2);
+  color: var(--text-dim);
 }
 
 input::placeholder, textarea::placeholder {
@@ -1010,12 +1093,10 @@ textarea {
 
 .field-label {
   display: block;
-  font-size: 11.5px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 6px;
+  color: var(--text-dim);
+  margin-bottom: 5px;
 }
 
 .field {
@@ -1035,18 +1116,18 @@ textarea {
   padding: 12px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-m);
-  background: var(--surface-2);
+  background: var(--surface);
   cursor: pointer;
 }
 
 .tipo-picker-opt:has(input:checked) {
-  border-color: var(--accent);
-  background: var(--accent-dim);
+  border-color: var(--accent-2);
+  background: var(--accent-2-dim);
 }
 
 .tipo-picker-opt input[type="radio"] {
   margin-top: 3px;
-  accent-color: var(--accent);
+  accent-color: var(--accent-2);
 }
 
 .tipo-picker-opt span {
@@ -1056,13 +1137,13 @@ textarea {
 }
 
 .tipo-picker-opt strong {
-  font-size: 13px;
+  font-size: 14.5px;
   color: var(--text);
 }
 
 .tipo-picker-opt small {
-  font-size: 11.5px;
-  color: var(--text-faint);
+  font-size: 13px;
+  color: var(--text-dim);
 }
 
 .row2 {
@@ -1079,20 +1160,21 @@ textarea {
 
 .tabs {
   display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--border);
+  gap: 20px;
+  border-bottom: 1px solid var(--border-strong);
   margin-bottom: 18px;
 }
 
 .tab {
-  padding: 9px 4px;
-  margin-right: 18px;
+  padding: 0 0 7px;
   background: none;
   border: none;
   color: var(--text-faint);
-  font-weight: 600;
-  font-size: 13px;
-  border-bottom: 2px solid transparent;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1;
+  border-bottom: 4px solid transparent;
   margin-bottom: -1px;
   text-decoration: none;
 }
@@ -1106,20 +1188,20 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 12px;
-  border-radius: 999px;
+  padding: 6px 11px;
+  border-radius: var(--radius-s);
   border: 1px solid var(--border-strong);
-  background: var(--surface-2);
+  background: var(--surface);
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 600;
   text-decoration: none;
 }
 
 .chip.active {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-  color: var(--accent);
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
 }
 
 .chip-row {
@@ -1133,16 +1215,16 @@ textarea {
 .chip.dashed {
   background: transparent;
   border-style: dashed;
-  color: var(--text-faint);
+  color: var(--text-dim);
 }
 
 .chip.dashed:hover {
-  color: var(--text-dim);
+  color: var(--text);
   border-color: var(--text-faint);
 }
 
 .chip-hint {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-faint);
   margin: -8px 0 14px;
 }
@@ -1152,7 +1234,7 @@ textarea {
   align-items: center;
   gap: 11px;
   padding: 9px 6px;
-  border-radius: 8px;
+  border-radius: var(--radius-s);
   cursor: pointer;
 }
 
@@ -1161,17 +1243,18 @@ textarea {
 }
 
 .pick-row input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--accent);
+  width: 17px;
+  height: 17px;
+  accent-color: var(--ink);
   flex: 0 0 auto;
 }
 
 .banner {
   border-radius: var(--radius-s);
   padding: 10px 12px;
-  font-size: 13px;
+  font-size: 14.5px;
   margin-bottom: 16px;
+  background: var(--surface-2);
 }
 
 .banner.danger {
@@ -1180,8 +1263,8 @@ textarea {
 }
 
 .banner.success {
-  background: var(--accent-dim);
-  color: var(--accent);
+  background: var(--ok-dim);
+  color: var(--ok);
 }
 
 .banner.info {
@@ -1189,15 +1272,15 @@ textarea {
   gap: 10px;
   align-items: flex-start;
   background: var(--accent-2-dim);
-  border: 1px solid var(--accent-2);
   color: var(--text);
 }
 
 /* ============ ALUMNO ============ */
 .alumno-shell {
+  width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  padding: 18px 18px 90px;
+  padding: 18px 16px 96px;
   min-height: 100vh;
 }
 
@@ -1205,121 +1288,217 @@ textarea {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .avatar-circle {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   flex: 0 0 auto;
-  background: var(--accent-dim);
-  color: var(--accent);
+  background: var(--accent);
+  color: var(--ink);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 17px;
-  border: 1px solid var(--accent);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1;
 }
 
 .greet {
-  font-size: 19px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
   margin: 0;
 }
 
 .greet-sub {
-  color: var(--text-faint);
-  font-size: 12px;
-  text-transform: capitalize;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.greet-sub::first-letter {
+  text-transform: uppercase;
 }
 
 .week-strip {
   display: flex;
   justify-content: space-between;
   gap: 4px;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 }
 
 .week-day {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
 }
 
 .week-day .wd-label {
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: 0.03em;
   color: var(--text-faint);
-  text-transform: uppercase;
 }
 
 .week-day .wd-num {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-s);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 800;
+  line-height: 1;
   color: var(--text-dim);
 }
 
 .week-day.today .wd-num {
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-weight: 700;
+  background: var(--ink);
+  color: var(--on-ink);
 }
 
 .week-day.today .wd-label {
-  color: var(--accent);
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* ---------- La barra de la semana: el sello de la app ----------
+   Cada sesión hecha es un disco cargado en la barra, a los dos lados como en
+   la realidad. Es un dibujo de datos reales (hechas / total), no un adorno. */
+.week-load {
+  margin: 22px 0 18px;
+}
+
+.week-load-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.week-load-count {
+  font-size: 14.5px;
+  color: var(--text-dim);
+  font-weight: 600;
 }
 
 .section-pill {
-  display: inline-flex;
-  align-items: center;
-  background: var(--surface-3);
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
   color: var(--text);
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 7px 14px;
-  border-radius: 999px;
-  margin-bottom: 14px;
 }
 
+.week-bar {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px minmax(0, 1fr);
+  align-items: center;
+  height: 88px;
+}
+
+.week-bar::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 1px;
+  background: var(--steel);
+}
+
+.wb-side {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.wb-side.left {
+  flex-direction: row-reverse;
+}
+
+.wb-collar {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 26px;
+  border-radius: 1px;
+  background: var(--steel);
+}
+
+.wb-plate {
+  flex: 0 1 15px;
+  min-width: 5px;
+  border-radius: 2px;
+}
+
+/* Tamaños y colores en el orden en que se carga una barra de verdad: del
+   disco más pesado al más liviano. */
+.wb-plate.s0 { height: 84px; background: var(--plate-red); }
+.wb-plate.s1 { height: 84px; background: var(--plate-blue); }
+.wb-plate.s2 { height: 70px; background: var(--plate-yellow); }
+.wb-plate.s3 { height: 58px; background: var(--plate-green); }
+.wb-plate.s4 { height: 46px; background: var(--plate-white); box-shadow: inset 0 0 0 1px var(--border-strong); }
+
+.wb-plate.free {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  opacity: 0.75;
+}
+
+.wb-plate.last {
+  animation: plate-on 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.wb-side.left .wb-plate.last {
+  --plate-from: -22px;
+}
+
+.wb-side.right .wb-plate.last {
+  --plate-from: 22px;
+}
+
+@keyframes plate-on {
+  from {
+    transform: translateX(var(--plate-from));
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Lo primero que ve el alumno: una franja oscura con el nombre de la sesión
+   en grande y el botón para empezar. */
 .today-card {
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
+  background: var(--ink);
+  color: var(--on-ink);
   border-radius: var(--radius-l);
   margin-bottom: 16px;
   overflow: hidden;
 }
 
-/* Cabecera "foto" del entrenamiento de hoy — todavía no hay fotos reales
-   de entrenamientos para usar acá, así que en vez de simular una con una
-   imagen de stock, es una textura prolija (nunca pretende ser una foto
-   real) con el nombre de la sesión superpuesto, como una tarjeta de
-   programa destacado. */
 .today-card-photo {
   position: relative;
-  min-height: 128px;
-  padding: 14px 18px 16px;
+  padding: 18px 18px 16px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.88) 100%),
-    repeating-linear-gradient(135deg, var(--surface-2) 0px, var(--surface-2) 11px, var(--surface-3) 11px, var(--surface-3) 22px);
 }
 
 .today-card-body {
-  padding: 16px 18px 18px;
+  padding: 0 18px 18px;
 }
 
 .today-card-head {
@@ -1330,57 +1509,71 @@ textarea {
 }
 
 .today-card-chevron {
-  color: var(--text-faint);
+  color: var(--on-ink-dim);
 }
 
 .today-card .tag {
-  font-size: 11px;
+  font-size: 15px;
   color: var(--accent);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   position: relative;
 }
 
 .today-card h2 {
-  font-size: 24px;
-  margin: 6px 0 2px;
+  font-size: 54px;
+  line-height: 0.95;
+  margin: 8px 0 8px;
   position: relative;
 }
 
 .today-card .meta {
-  color: var(--text-dim);
-  font-size: 12.5px;
+  color: var(--on-ink-dim);
+  font-size: 14.5px;
   position: relative;
 }
 
 .progress-track {
   height: 6px;
   background: var(--surface-3);
-  border-radius: 99px;
+  border-radius: 1px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: var(--accent);
-  border-radius: 99px;
+  background: var(--ok);
 }
 
 .mini-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
 .mini-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--radius-s);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  padding: 11px 2px;
+  border-top: 1px solid var(--border-strong);
+}
+
+.mini-row:last-child {
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.mini-day {
+  min-width: 74px;
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
+.mini-name {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .mini-row .dot {
@@ -1393,36 +1586,35 @@ textarea {
 .train-head {
   position: sticky;
   top: 0;
-  background: var(--surface);
+  background: var(--ink);
+  color: var(--on-ink);
   padding: 16px 16px 14px;
   z-index: 5;
-  border: 1px solid var(--border);
   border-radius: var(--radius-l);
   margin-bottom: 18px;
 }
 
 .train-head .movilidad {
-  color: var(--text-dim);
-  font-size: 12.5px;
+  color: var(--on-ink-dim);
+  font-size: 14.5px;
   margin: 10px 0 0;
 }
 
 .train-head .movilidad strong {
-  color: var(--text);
+  color: var(--on-ink);
   font-weight: 600;
 }
 
 .train-head .prog {
-  font-size: 11px;
+  font-size: 14.5px;
   color: var(--accent);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 .train-head h2 {
-  font-size: 19px;
-  margin-top: 2px;
+  font-size: 42px;
+  line-height: 0.95;
+  margin-top: 4px;
 }
 
 .warmup-item {
@@ -1430,7 +1622,7 @@ textarea {
   align-items: center;
   gap: 9px;
   padding: 9px 14px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-dim);
 }
@@ -1445,82 +1637,54 @@ textarea {
 }
 
 .check-circle {
-  width: 17px;
-  height: 17px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  border: 1.6px solid var(--border-strong);
+  border: 2px solid var(--border-strong);
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface-2);
+  background: var(--surface);
   color: transparent;
 }
 
 .check-circle.on {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--ok);
+  border-color: var(--ok);
   color: var(--accent-ink);
 }
 
 .a-block-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 18px 2px 10px;
+  gap: 8px;
+  margin: 22px 2px 8px;
 }
 
-/* Sacamos el punto de color por bloque (quedaba "infantil" con varios
-   bloques de colores distintos en la misma pantalla, y competía con el
-   verde de acento que ya usan los botones y el check). En su lugar, el
-   título lleva el mismo subrayado fino que el wordmark "Z-PERFORMANCE"
-   del header — un solo acento de marca, en un solo lugar, acotado al
-   ancho del texto (display: inline-block) en vez de estirarse con el
-   resto de la fila. */
 .a-block-title h3 {
-  display: inline-block;
-  position: relative;
   margin: 0;
-  padding-bottom: 6px;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 15.5px;
+  font-size: 32px;
   color: var(--text);
 }
 
-.a-block-title h3::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: var(--accent);
-}
-
-/* El cuerpo de un bloque ahora es una sola tarjeta (borde + fondo propio)
-   que agrupa todos sus ejercicios adentro, separados por una línea fina
-   entre uno y otro — antes cada ejercicio era su propia tarjeta suelta,
-   lo que se veía más desprolijo y menos "de sistema de diseño". */
+/* El cuerpo de un bloque es una planilla: todos sus ejercicios juntos,
+   separados por una línea, en vez de una tarjeta por ejercicio. */
 .a-block-body {
   transition: opacity 0.15s;
-  border: 1px solid var(--border);
-  border-left-width: 3px;
-  border-left-color: var(--border-strong);
-  border-radius: var(--radius-l);
+  border-top: 3px solid var(--ink);
   background: var(--surface);
+  border-radius: 0 0 var(--radius-m) var(--radius-m);
   overflow: hidden;
 }
 
 .a-block-body.done {
-  opacity: 0.45;
+  opacity: 0.55;
 }
 
-/* Cierre del bloque: antes era un botón "Marcar completo" pegado al
-   título, arriba de todo — quedaba compitiendo visualmente con el nombre
-   del bloque. Ahora es una franja al pie de la tarjeta, separada de los
-   ejercicios por una línea, así lee como la acción de cierre del bloque
-   (después de ver todos sus ejercicios) y no como parte del encabezado. */
+/* Cierre del bloque: franja al pie, separada de los ejercicios por una
+   línea, así lee como la acción de cierre del bloque (después de ver todos
+   sus ejercicios) y no como parte del encabezado. */
 .a-block-footer {
   display: flex;
   justify-content: flex-end;
@@ -1533,20 +1697,20 @@ textarea {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: none;
-  border: 1px solid var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--ok);
   border-radius: var(--radius-s);
-  color: var(--accent);
+  color: var(--ok);
   font-family: var(--font-body);
-  font-size: 12.5px;
-  font-weight: 600;
-  padding: 7px 14px;
+  font-size: 14.5px;
+  font-weight: 700;
+  padding: 8px 14px;
   cursor: pointer;
-  transition: 0.12s;
+  transition: background-color 0.12s, color 0.12s;
 }
 
 .block-finish-btn:hover {
-  background: var(--accent);
+  background: var(--ok);
   color: var(--accent-ink);
 }
 
@@ -1559,8 +1723,6 @@ textarea {
 
 .a-done-row-wrap {
   border: 1px solid var(--border);
-  border-left-width: 3px;
-  border-left-color: var(--border-strong);
   border-radius: var(--radius-m);
   background: var(--surface);
   margin-bottom: 8px;
@@ -1571,7 +1733,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 11px 12px;
+  padding: 10px 12px;
 }
 
 .a-done-check {
@@ -1580,24 +1742,20 @@ textarea {
   flex: 0 0 auto;
 }
 
-/* Antes tachado (text-decoration: line-through) — se leía como una lista
-   de compras marcada a mano, medio informal. Bajar la opacidad en vez de
-   tachar comunica "ya hecho" sin quedar informal. */
 .a-done-nombre {
   flex: 1;
   min-width: 0;
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text-dim);
-  opacity: 0.55;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .a-done-count {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-faint);
   flex: 0 0 auto;
 }
@@ -1621,9 +1779,9 @@ textarea {
    se agrupa al cerrarse), pero con su propio tono e ícono (llama) para que
    se note al toque que no es un bloque de la rutina. */
 .check-circle.on.warmup {
-  background: var(--warn);
-  border-color: var(--warn);
-  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
 }
 
 .a-done-flame {
@@ -1636,13 +1794,15 @@ textarea {
   flex: 0 0 auto;
 }
 
-/* Ya no es una tarjeta suelta por ejercicio — es una fila dentro de la
-   tarjeta del bloque (.a-block-body), separada de la siguiente por una
-   línea fina. La última fila no lleva línea abajo.
-   :last-of-type (no :last-child) a propósito: .a-block-body ahora puede
-   tener un .a-block-footer como último hijo real, después del último
-   .a-ex — con :last-child ese ejercicio dejaría de matchear (ya no es el
-   último hijo) y le quedaría una línea de más pegada arriba del footer. */
+/* Una fila dentro de la planilla del bloque (.a-block-body).
+   :last-of-type (no :last-child) a propósito: .a-block-body puede tener un
+   .a-block-footer como último hijo real, después del último .a-ex — con
+   :last-child ese ejercicio dejaría de matchear y le quedaría una línea de
+   más pegada arriba del footer. */
+.a-ex {
+  border-bottom: 1px solid var(--border);
+}
+
 .a-ex:last-of-type {
   border-bottom: none;
 }
@@ -1652,29 +1812,31 @@ textarea {
   align-items: center;
   gap: 6px;
   margin: -4px 0 14px 4px;
-  font-size: 11.5px;
-  color: var(--text-faint);
+  font-size: 13.5px;
+  color: var(--text-dim);
 }
 
 .a-ex-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 13px 14px;
+  padding: 12px 14px 6px;
 }
 
 .a-ex-head .nm {
   flex: 1;
+  min-width: 0;
 }
 
 .a-ex-head .nm .t {
   font-weight: 700;
-  font-size: 14px;
+  font-size: 16.5px;
+  line-height: 1.2;
 }
 
 .a-ex-head .nm .s {
-  font-size: 11.5px;
-  color: var(--text-faint);
+  font-size: 13.5px;
+  color: var(--text-dim);
   margin-top: 1px;
 }
 
@@ -1686,44 +1848,41 @@ textarea {
 }
 
 .a-ex-peso label {
-  font-size: 11.5px;
-  color: var(--text-faint);
+  font-size: 14px;
+  color: var(--text-dim);
 }
 
-/* Especificidad: la regla global de la línea ~793
+/* Especificidad: la regla global de inputs
    (input:not([type="checkbox"]):not([type="radio"])) tiene más peso que
-   ".a-ex-peso input" sola (dos :not con selector de atributo cuentan como
-   clase), así que sin agregar [type="number"] acá el width:100% de esa
-   regla general le gana y el campo se ve estirado a lo ancho del bloque
-   pase lo que pase. Con el atributo, la especificidad queda pareja y esta
-   regla (que aparece después en el archivo) es la que se aplica. */
+   ".a-ex-peso input" sola, así que sin agregar [type="number"] acá el
+   width:100% de esa regla le gana y el campo se ve estirado a lo ancho del
+   bloque. Con el atributo, la especificidad queda pareja y esta regla (que
+   aparece después en el archivo) es la que se aplica. */
 .a-ex-peso input[type="number"] {
-  width: 46px;
-  height: auto;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-  background: var(--surface-2);
+  width: 76px;
+  height: 44px;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  background: var(--surface);
   border-radius: var(--radius-s);
   border: 1px solid var(--border-strong);
-  padding: 6px 6px;
+  padding: 4px 6px;
   text-align: center;
   color: var(--text);
   flex: none;
 }
 
 .a-ex-peso .kg-suffix {
-  font-size: 10.5px;
-  font-family: var(--font-mono);
-  font-weight: 600;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-dim);
 }
 
 .a-ex-peso .last {
-  font-size: 11px;
-  color: var(--text-faint);
+  font-size: 13.5px;
+  color: var(--text-dim);
   margin-left: auto;
 }
 
@@ -1743,67 +1902,64 @@ textarea {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin: 14px 0 20px;
+  margin: 8px 0 18px;
 }
 
 .p-header h2 {
-  font-size: 19px;
+  font-size: 46px;
 }
 
 .p-header .obj {
-  font-size: 12.5px;
-  color: var(--text-faint);
-  margin-top: 2px;
+  font-size: 15px;
+  color: var(--text-dim);
+  margin-top: 6px;
 }
 
 .p-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-  gap: 8px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(3, 1fr);
+  background: var(--ink);
+  color: var(--on-ink);
+  border-radius: var(--radius-m);
+  margin-bottom: 24px;
+  padding: 4px 0;
 }
 
 .p-stat {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
-  padding: 11px;
-  text-align: center;
+  padding: 8px 12px;
 }
 
 .p-stat .v {
-  font-family: var(--font-mono);
-  font-size: 19px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .p-stat .k {
-  font-size: 10px;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 2px;
+  font-size: 13px;
+  color: var(--on-ink-dim);
+  line-height: 1.15;
 }
 
 .hist-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 11px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
-  margin-bottom: 8px;
-  background: var(--surface);
+  gap: 12px;
+  padding: 10px 2px;
+  border-top: 1px solid var(--border-strong);
 }
 
 .hist-row .d {
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 15px;
 }
 
 .hist-row .m {
-  font-size: 11.5px;
-  color: var(--text-faint);
+  font-size: 13.5px;
+  color: var(--text-dim);
 }
 
 .bottom-nav {
@@ -1813,9 +1969,8 @@ textarea {
   right: 0;
   display: flex;
   justify-content: center;
-  border-top: 1px solid var(--border);
-  background: var(--bg-grade);
-  padding: 8px 0 calc(10px + env(safe-area-inset-bottom));
+  background: var(--ink);
+  padding: 6px 0 calc(8px + env(safe-area-inset-bottom));
   z-index: 40;
 }
 
@@ -1832,14 +1987,14 @@ textarea {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   background: none;
   border: none;
-  color: var(--text-faint);
-  font-size: 10.5px;
+  color: var(--on-ink-dim);
+  font-size: 13px;
   font-weight: 600;
   padding: 6px 0;
-  border-radius: 10px;
+  border-radius: var(--radius-s);
   text-decoration: none;
 }
 
@@ -1856,12 +2011,17 @@ textarea {
 .slider-row input[type="range"] {
   flex: 1;
   accent-color: var(--accent);
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .slider-val {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  width: 22px;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  width: 26px;
   text-align: center;
 }
 
@@ -1870,22 +2030,21 @@ textarea {
 }
 
 .video-btn {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface-3);
-  border: 1px solid var(--border-strong);
+  background: var(--accent-2-dim);
+  border: 1px solid transparent;
   color: var(--accent-2);
   cursor: pointer;
   text-decoration: none;
 }
 
 .video-btn:hover {
-  background: var(--surface-2);
   border-color: var(--accent-2);
 }
 
@@ -1914,22 +2073,22 @@ textarea {
 }
 
 /* ============ CALENDARIO (plan semanal por alumno) ============
-   Antes esto era una grilla Lunes-Domingo (las sesiones tenían un día fijo).
-   Ahora una sesión se puede hacer cualquier día, así que en vez de "qué se
-   planeó para cada día" se muestra "cómo viene cada alumno con su semana
-   actual" — una tarjeta por alumno con sus "Día N" como chips, marcados
-   cuando ya los completó. */
+   Una sesión se puede hacer cualquier día, así que en vez de "qué se planeó
+   para cada día" se muestra "cómo viene cada alumno con su semana actual":
+   una fila por alumno con sus "Día N", marcados cuando ya los completó. */
 .plan-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  max-width: 820px;
 }
 
 .plan-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  padding: 14px 16px;
+  padding: 13px 2px;
+  border-top: 1px solid var(--border-strong);
+}
+
+.plan-card:last-child {
+  border-bottom: 1px solid var(--border-strong);
 }
 
 .plan-head {
@@ -1938,22 +2097,24 @@ textarea {
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .plan-head .student {
-  font-size: 14px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .plan-head .meta {
-  font-size: 11.5px;
-  color: var(--text-faint);
+  font-size: 13.5px;
+  color: var(--text-dim);
 }
 
 .plan-days {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -1961,62 +2122,110 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 11px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font-size: 13.5px;
   font-weight: 600;
   text-decoration: none;
   color: var(--text-dim);
 }
 
 .plan-day:hover {
-  border-color: var(--border-strong);
   background: var(--surface-3);
 }
 
 .plan-day.done {
-  background: var(--accent-dim);
+  background: var(--ok-dim);
   border-color: transparent;
-  color: var(--accent);
+  color: var(--ok);
+}
+
+/* ============ PROGRAMAS ============ */
+.program-list {
+  display: flex;
+  flex-direction: column;
+  max-width: 820px;
+}
+
+.program-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 2px;
+  border-top: 1px solid var(--border-strong);
+}
+
+.program-row:last-child {
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.program-info {
+  min-width: 0;
+}
+
+.program-name {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.program-name:hover {
+  color: var(--accent-2);
+}
+
+.program-desc {
+  font-size: 14.5px;
+  color: var(--text-dim);
+  margin: 5px 0 8px;
+}
+
+.program-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 /* ============ BLOQUE BUILDER ============ */
 .week-pills {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
   margin-bottom: 18px;
 }
 
 .week-pill {
-  padding: 8px 14px;
+  padding: 7px 13px;
   border-radius: var(--radius-s);
   border: 1px solid var(--border-strong);
-  background: var(--surface-2);
+  background: var(--surface);
   color: var(--text-dim);
   font-weight: 600;
-  font-size: 12.5px;
+  font-size: 14px;
   text-decoration: none;
 }
 
 .week-pill.active {
-  background: var(--surface-3);
-  color: var(--text);
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 1px var(--accent-2) inset;
+  background: var(--ink);
+  color: var(--on-ink);
+  border-color: var(--ink);
 }
 
 .session-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 13px 14px;
   border-radius: var(--radius-m);
   border: 1px solid var(--border);
   background: var(--surface);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .session-card:hover {
@@ -2024,14 +2233,14 @@ textarea {
 }
 
 .session-day {
-  width: 52px;
+  width: 62px;
   flex: 0 0 auto;
   text-align: center;
   font-family: var(--font-display);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-faint);
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-dim);
   border-right: 1px solid var(--border);
   padding-right: 12px;
 }
@@ -2042,19 +2251,19 @@ textarea {
 }
 
 .session-info .name {
-  font-weight: 600;
-  font-size: 14.5px;
+  font-weight: 700;
+  font-size: 16px;
 }
 
 .session-info .meta {
-  font-size: 12px;
-  color: var(--text-faint);
+  font-size: 13.5px;
+  color: var(--text-dim);
   margin-top: 2px;
 }
 
 .block {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
+  border-top: 3px solid var(--ink);
+  border-radius: 0 0 var(--radius-m) var(--radius-m);
   margin-bottom: 12px;
   overflow: hidden;
   background: var(--surface);
@@ -2073,7 +2282,7 @@ textarea {
 .block-color {
   width: 10px;
   height: 10px;
-  border-radius: 3px;
+  border-radius: 2px;
   flex: 0 0 auto;
 }
 
@@ -2092,7 +2301,7 @@ textarea {
 .ex-name {
   flex: 1;
   font-weight: 600;
-  font-size: 13.5px;
+  font-size: 15px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2111,7 +2320,7 @@ textarea {
   height: 28px;
   padding: 0;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   background: none;
   color: var(--text-faint);
   flex: 0 0 auto;
@@ -2132,15 +2341,14 @@ textarea {
   padding-left: 6px;
 }
 
+/* Series x reps: el dato que se busca con la mirada mientras se entrena */
 .ex-scheme {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 800;
+  line-height: 1;
   color: var(--text);
-  background: var(--surface-2);
-  border: 1px solid var(--border-strong);
-  padding: 4px 10px;
-  border-radius: var(--radius-s);
+  white-space: nowrap;
 }
 
 .add-ex-row {
@@ -2165,7 +2373,7 @@ textarea {
 .ex-lib-card .thumb {
   aspect-ratio: 16/9;
   border-radius: var(--radius-s);
-  background: linear-gradient(135deg, var(--surface-3), var(--surface-2));
+  background: var(--surface-3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2174,34 +2382,11 @@ textarea {
   overflow: hidden;
 }
 
-/* Misma cabecera "foto" que .today-card, reutilizada en las tarjetas de la
-   grilla de Programas — todavía sin fotos reales de entrenamientos. */
-.program-card {
-  overflow: hidden;
-}
-
-.program-card-photo {
-  position: relative;
-  height: 64px;
-  padding: 0 14px 9px;
-  display: flex;
-  align-items: flex-end;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.88) 100%),
-    repeating-linear-gradient(135deg, var(--surface-2) 0px, var(--surface-2) 11px, var(--surface-3) 11px, var(--surface-3) 22px);
-}
-
-.program-card-photo .nm {
-  font-family: var(--font-display);
-  font-size: 16px;
-  text-decoration: none;
-  color: var(--text);
-}
-
 .ex-lib-card .thumb .play {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(0, 0, 0, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2215,7 +2400,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 9px 14px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -2224,10 +2409,10 @@ textarea {
 }
 
 .ex-lib-thumb {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-s);
-  background: var(--surface-2);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface-3);
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -2251,15 +2436,15 @@ textarea {
 
 .ex-lib-name {
   font-weight: 600;
-  font-size: 13.5px;
+  font-size: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .ex-lib-sub {
-  font-size: 11.5px;
-  color: var(--text-faint);
+  font-size: 13px;
+  color: var(--text-dim);
   margin-top: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2276,22 +2461,23 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
   margin: 22px 0 10px;
 }
 
 .section-h h3 {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-faint);
+  font-size: 28px;
+  color: var(--text);
 }
 
 .link-btn {
   background: none;
   border: none;
+  padding: 0;
   color: var(--accent-2);
-  font-weight: 600;
-  font-size: 12.5px;
+  font-weight: 700;
+  font-size: 14px;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -2305,7 +2491,7 @@ textarea {
 .search-wrap svg {
   position: absolute;
   left: 10px;
-  top: 9px;
+  top: 12px;
   color: var(--text-faint);
 }
 
@@ -2326,8 +2512,8 @@ textarea {
 
 .btn.block-w {
   width: 100%;
-  padding: 13px;
-  font-size: 14px;
+  padding: 14px;
+  font-size: 16px;
   border-radius: var(--radius-s);
 }
 
@@ -2349,17 +2535,17 @@ textarea {
     z-index: 70;
     width: 250px;
     max-width: 82vw;
-    background: var(--bg);
+    background: var(--surface);
     border-right: 1px solid var(--border-strong);
     padding: calc(16px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom));
     transform: translateX(-100%);
     transition: transform 0.22s ease;
-    box-shadow: 4px 0 28px rgba(0, 0, 0, 0.45);
     overflow-y: auto;
   }
 
   .nav-toggle-checkbox:checked ~ main .sidebar {
     transform: translateX(0);
+    box-shadow: var(--shadow-pop);
   }
 
   .nav-toggle-checkbox:checked ~ .nav-backdrop {
@@ -2371,14 +2557,17 @@ textarea {
   }
 
   .content {
-    padding: 18px 14px 50px;
+    padding: 18px 16px 50px;
   }
   .row2, .row3 {
     grid-template-columns: 1fr;
   }
   .topbar {
-    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
     flex-wrap: wrap;
+  }
+  h1 {
+    font-size: 42px;
   }
 }
 
@@ -2388,7 +2577,7 @@ textarea {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.55);
   z-index: 80;
   display: flex;
   align-items: flex-end;
@@ -2401,7 +2590,6 @@ textarea {
   max-width: 480px;
   max-height: min(78vh, 640px);
   background: var(--surface);
-  border: 1px solid var(--border-strong);
   border-radius: var(--radius-l) var(--radius-l) 0 0;
   box-shadow: var(--shadow-pop);
   padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
@@ -2430,13 +2618,14 @@ textarea {
 
 .modal-head h3 {
   margin: 0;
+  font-size: 28px;
 }
 
 .modal-list {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   min-height: 0;
   margin-bottom: 4px;
 }
@@ -2460,7 +2649,7 @@ textarea {
 }
 
 .modal-ex-row.checked {
-  background: var(--accent-dim);
+  background: var(--accent-2-dim);
 }
 
 .modal-ex-row:disabled {
@@ -2470,27 +2659,26 @@ textarea {
 
 .modal-ex-row .nm {
   display: block;
-  font-size: 13.5px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .modal-ex-row .sub {
   display: block;
-  font-size: 11.5px;
-  color: var(--text-faint);
+  font-size: 13px;
+  color: var(--text-dim);
   margin-top: 1px;
 }
 
 /* Casillero de tilde para elegir varios ejercicios antes de agregarlos
-   todos juntos (ver modal-add-bar) — reemplaza el ícono de "+" que antes
-   agregaba la fila apenas se la tocaba. */
+   todos juntos (ver modal-add-bar). */
 .modal-ex-check {
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
-  border: 1.6px solid var(--border-strong);
-  background: var(--surface-2);
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-s);
+  border: 2px solid var(--border-strong);
+  background: var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2498,8 +2686,8 @@ textarea {
 }
 
 .modal-ex-check.on {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-2);
+  border-color: var(--accent-2);
 }
 
 .modal-create {
@@ -2510,7 +2698,7 @@ textarea {
   padding: 10px;
   margin-top: 6px;
   border-top: 1px solid var(--border);
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--text-dim);
 }
 
@@ -2523,51 +2711,42 @@ textarea {
   border-top: 1px solid var(--border);
 }
 
+/* Descanso del bloque (vista alumno), debajo del título */
+.a-block-rest {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -2px 2px 10px;
+  padding: 4px 10px;
+  border-radius: var(--radius-m);
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 /* Descripción opcional del bloque (vista alumno), debajo del título */
 .a-block-desc {
-  margin: -2px 2px 12px;
-  font-size: 14px;
-  line-height: 1.45;
-  color: var(--text-dim);
+  margin: -2px 2px 10px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--text);
   white-space: pre-line;
 }
 
 /* ---------- Bloques en la vista del coach ----------
-   Mismo look que los bloques del alumno (.a-block-title / .a-block-body):
-   título subrayado con el acento, descripción suelta debajo y la caja con
-   los ejercicios. Los campos editables se ven como texto hasta que se
-   enfocan. */
+   Mismo look que los bloques del alumno (.a-block-title / .a-block-body).
+   El nombre y la descripción son editables, pero se ven como texto hasta que
+   se enfocan. */
 .c-block {
-  margin-bottom: 22px;
+  margin-bottom: 24px;
 }
 
 .c-block-title {
   flex-wrap: wrap;
   justify-content: space-between;
   row-gap: 8px;
-}
-
-.c-block-name {
-  field-sizing: content;
-  min-width: 90px;
-  max-width: 100%;
-  width: auto;
-  height: auto;
-  margin: 0;
-  padding: 0 0 6px;
-  border: none;
-  border-bottom: 2px solid var(--accent);
-  border-radius: 0;
-  background: transparent;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 15.5px;
-  color: var(--text);
-}
-
-.c-block-name:focus {
-  outline: none;
-  box-shadow: none;
+  margin-top: 0;
 }
 
 .c-block-meta {
@@ -2577,44 +2756,109 @@ textarea {
   margin-left: auto;
 }
 
-.c-block-meta select,
-.c-block-meta input {
+.c-block .c-block-head .c-block-meta select,
+.c-block .c-block-head .c-block-meta input {
   width: 92px;
   height: auto;
-  padding: 5px 8px;
-  font-size: 12px;
+  padding: 6px 8px;
+  font-size: 13.5px;
 }
 
-.c-block-desc {
+/* Más especificidad que la regla global de inputs
+   (input:not(...):not(...)), que si no les volvía a poner caja de fondo al
+   nombre y a la descripción. */
+.c-block .c-block-head input.c-block-name {
+  field-sizing: content;
+  width: auto;
+  min-width: 90px;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto 0 0;
+  padding: 0 0 2px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--text);
+}
+
+.c-block .c-block-head input.c-block-name:hover {
+  border-bottom-color: var(--border-strong);
+}
+
+.c-block .c-block-head input.c-block-name:focus {
+  outline: none;
+  border-bottom-color: var(--accent-2);
+}
+
+.c-block .c-block-head textarea.c-block-desc {
   display: block;
   width: 100%;
-  margin: -2px 0 12px;
-  padding: 2px;
+  margin: -2px 0 10px;
+  background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-s);
-  background: transparent;
+  box-shadow: none;
+  padding: 2px;
+  min-height: 0;
   font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 15px;
+  line-height: 1.4;
   color: var(--text-dim);
   resize: vertical;
-  min-height: 0;
 }
 
-.c-block-desc:hover {
+.c-block .c-block-head textarea.c-block-desc:hover {
   border-color: var(--border);
 }
 
-.c-block-desc:focus {
+.c-block .c-block-head textarea.c-block-desc:focus {
   outline: none;
-  border-color: var(--border-strong);
+  border-color: var(--accent-2);
   background: var(--surface);
   padding: 6px 8px;
 }
 
+.c-block-num {
+  flex: 0 0 auto;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: var(--radius-s);
+}
+
+.c-block .btn.c-block-save {
+  background: var(--ink);
+  color: var(--on-ink);
+  border-color: var(--ink);
+}
+
+.c-block .btn.c-block-save:hover {
+  background: var(--ink-2);
+}
+
+.c-block-rest {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: -4px 2px 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
 /* Filas de ejercicio dentro de la caja: como .a-ex del alumno */
 .a-block-body .ex-row {
-  padding: 13px 14px;
+  padding: 12px 14px;
   border-top: none;
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
@@ -2628,18 +2872,18 @@ textarea {
   border-bottom: none;
 }
 
+/* La última fila antes del footer no lleva borde (el footer ya tiene el suyo) */
+.a-block-body .ex-row:has(+ .a-block-footer) {
+  border-bottom: none;
+}
+
 .a-block-body .ex-name {
   font-weight: 700;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .a-block-body .ex-row input {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  color: var(--text);
-  background: var(--surface-2);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-s);
+  font-weight: 700;
 }
 
 .c-block-footer {
@@ -2647,123 +2891,4 @@ textarea {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-/* La última fila antes del footer no lleva borde (el footer ya tiene el suyo) */
-.a-block-body .ex-row:has(+ .a-block-footer) {
-  border-bottom: none;
-}
-
-/* ---------- Bloques coach: detalles de color (opción B "Equilibrada") ---------- */
-/* Más especificidad que la regla global de inputs (input:not(...):not(...)),
-   que si no les volvía a poner caja gris de fondo al nombre y a la descripción. */
-.c-block .c-block-head input.c-block-name {
-  field-sizing: content;
-  width: auto;
-  min-width: 90px;
-  max-width: 100%;
-  height: auto;
-  padding: 0 0 6px;
-  border: none;
-  border-bottom: 2px solid var(--accent);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 15.5px;
-  color: var(--text);
-}
-
-.c-block .c-block-head textarea.c-block-desc {
-  background: transparent;
-  border: 1px solid transparent;
-  box-shadow: none;
-  padding: 2px;
-  min-height: 0;
-  color: var(--text-dim);
-  font-size: 14px;
-}
-
-.c-block .c-block-head textarea.c-block-desc:hover {
-  border-color: var(--border);
-}
-
-.c-block .c-block-head textarea.c-block-desc:focus {
-  border-color: #4d6100;
-  background: var(--surface);
-  padding: 6px 8px;
-}
-
-.c-block-num {
-  flex: 0 0 auto;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-family: var(--font-mono);
-  font-weight: 800;
-  font-size: 11px;
-  line-height: 1;
-  padding: 4px 6px;
-  border-radius: 5px;
-  align-self: flex-start;
-  margin-top: 2px;
-}
-
-.c-block-title .c-block-name {
-  margin-right: auto;
-}
-
-.c-block .btn.c-block-save {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: var(--accent);
-}
-
-.c-block .btn.c-block-save:hover {
-  filter: brightness(0.92);
-}
-
-.c-block-rest {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin: -4px 2px 12px;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--accent);
-}
-
-.c-block .a-block-body {
-  border-color: #3a4a00;
-  border-left-color: #3a4a00;
-  border-left-width: 1px;
-  box-shadow: 0 0 0 1px rgba(204, 255, 0, 0.06), 0 10px 30px -16px rgba(204, 255, 0, 0.25);
-}
-
-.c-block .a-block-body .ex-row input {
-  background: var(--accent-dim);
-  border-color: #4d6100;
-  color: var(--accent);
-}
-
-.c-block .a-block-body .ex-row input:focus {
-  border-color: var(--accent);
-}
-
-.c-block .ex-drag-handle {
-  color: #6b8500;
-}
-
-.c-block .ex-drag-handle:hover {
-  color: var(--accent);
-}
-
-.c-block .a-block-footer {
-  background: var(--accent-dim);
-  border-top-color: #3a4a00;
-}
-
-.c-block .a-block-footer .link-btn {
-  color: var(--accent);
 }

@@ -62,3 +62,25 @@ export function toVideoEmbed(url: string): VideoEmbed {
 
   return { kind: "link", src: url };
 }
+
+// ---------- Limpieza de sonido de los videos subidos ----------
+// "ruido": baja el ruido de fondo (viento, gente, música lejana, zumbidos) y
+//          deja el resto del sonido.
+// "mudo":  saca todo el sonido.
+// "original": se sube tal cual.
+export type AudioMode = "ruido" | "mudo" | "original";
+export const AUDIO_MODES: { value: AudioMode; label: string; hint: string }[] = [
+  { value: "ruido", label: "Quitar el ruido de fondo", hint: "Recomendado. Baja el ruido y deja tu voz." },
+  { value: "mudo", label: "Quitar todo el sonido", hint: "El video queda sin audio." },
+  { value: "original", label: "Dejar el sonido como está", hint: "Se sube sin cambios." },
+];
+
+/** Ruta dentro del bucket de un video subido por nosotros, o null si es un link externo. */
+export function storagePathFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const marker = `/storage/v1/object/public/${VIDEO_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  if (idx === -1) return null;
+  const path = decodeURIComponent(url.slice(idx + marker.length).split("?")[0]);
+  return path || null;
+}

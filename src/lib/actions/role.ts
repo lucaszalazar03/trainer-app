@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { asUser } from "@/lib/db/as-user";
+import { createDirectClient } from "@/lib/db/direct-client";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -9,10 +11,14 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export async function resolveHome(supabase: SupabaseServerClient, userId: string): Promise<string> {
   // Ambas consultas en paralelo — no dependen una de la otra, y en serie
   // duplican innecesariamente la latencia de red hacia la base.
-  const [{ data: coach }, { data: student }] = await Promise.all([
-    supabase.from("coaches").select("id").eq("id", userId).maybeSingle(),
-    supabase.from("students").select("id").eq("user_id", userId).maybeSingle(),
-  ]);
+  // Conexión directa (la API REST se cortaba por timeout y mandaba al
+  // usuario al login con un error falso).
+  const [[coach], [student]] = await asUser(userId, (sql) =>
+    Promise.all([
+      sql<{ id: string }[]>`select id from coaches where id = ${userId} limit 1`,
+      sql<{ id: string }[]>`select id from students where user_id = ${userId} limit 1`,
+    ])
+  );
 
   if (coach) return "/dashboard";
   if (student) return "/alumno";
@@ -22,8 +28,8 @@ export async function resolveHome(supabase: SupabaseServerClient, userId: string
   // espacios, o recién después de que el alumno ya se había registrado).
   // Antes de mostrar el error, intentamos auto-vincularlo por email y
   // volvemos a chequear.
-  await supabase.rpc("link_my_student_account");
-  const { data: retried } = await supabase.from("students").select("id").eq("user_id", userId).maybeSingle();
+  await createDirectClient(userId).rpc("link_my_student_account");
+  const [retried] = await asUser(userId, (sql) => sql<{ id: string }[]>`select id from students where user_id = ${userId} limit 1`);
   if (retried) return "/alumno";
 
   return `/login?error=${encodeURIComponent(

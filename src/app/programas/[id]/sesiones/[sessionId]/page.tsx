@@ -9,7 +9,7 @@ import { AddExerciseModal } from "@/components/AddExerciseModal";
 import { requireUser } from "@/lib/actions/require-user";
 import { getDirectSql } from "@/lib/db/direct";
 import { friendlyDbError } from "@/lib/db/friendly-error";
-import { COLORS } from "@/lib/constants";
+import { COLORS, DIAS } from "@/lib/constants";
 import { updateSession } from "../../../actions";
 import {
   addBlock,
@@ -58,7 +58,7 @@ export default async function SessionEditorPage({
 
   type ExRef = { nombre: string; video_url: string | null } | null;
   type Row = { id: string; series: number | null; reps: string | null; exercises: ExRef };
-  type Ses = { id: string; nombre: string; objetivo: string | null; movilidad: string | null; week_id: string; week_numero: number | null };
+  type Ses = { id: string; nombre: string; objetivo: string | null; movilidad: string | null; dia: string | null; week_id: string; week_numero: number | null };
   let session = null as Ses | null;
   let program = null as { nombre: string } | null;
   let warmups: Row[] = [];
@@ -72,7 +72,7 @@ export default async function SessionEditorPage({
   try {
     const [sesRows, progRows, warmRows, blockRows, tplRows, exRows, beRows] = await Promise.all([
       sql<Ses[]>`
-        select se.id, se.nombre, se.objetivo, se.movilidad, se.week_id, w.numero as week_numero
+        select se.id, se.nombre, se.objetivo, se.movilidad, se.dia, se.week_id, w.numero as week_numero
         from sessions se join weeks w on w.id = se.week_id join programs p on p.id = w.program_id
         where se.id = ${sessionId} and p.coach_id = ${user.id}
       `,
@@ -179,20 +179,17 @@ export default async function SessionEditorPage({
             <input name="nombre" defaultValue={session.nombre} />
           </div>
           <div style={{ flex: 1, minWidth: 130 }} className="field">
-            <span className="field-label">Orden en la semana</span>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                height: 38,
-                fontSize: 13.5,
-                fontWeight: 600,
-                color: "var(--text-dim)",
-              }}
-              title="El alumno la puede hacer cualquier día — esto es sólo su lugar en el orden de la semana. Para cambiarlo, reordená las sesiones desde la semana."
-            >
-              {numeroDia ? `Día ${numeroDia} de ${totalDias}` : "—"}
-            </div>
+            <span className="field-label">Día</span>
+            {/* Día en que el alumno la ve en su semana. Si no la hace ese
+                día, la puede hacer otro (le aparece como pendiente). */}
+            <select name="dia" defaultValue={session.dia ?? ""} title="Día en que el alumno ve esta sesión. Si no la hace ese día, la puede hacer otro.">
+              <option value="">{numeroDia ? `Sin día (Día ${numeroDia})` : "Sin día"}</option>
+              {DIAS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
           </div>
           <div style={{ flex: 2, minWidth: 160 }} className="field">
             <span className="field-label">Objetivo</span>

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/actions/require-user";
 import { sendPushToUser } from "@/lib/push-server";
+import { getDirectSql } from "@/lib/db/direct";
+import { copySessionsExact } from "@/lib/db/copy-sessions";
 
 export async function createProgram(formData: FormData) {
   const { supabase, user } = await requireUser();
@@ -135,144 +137,56 @@ export async function deleteSession(programId: string, weekId: string, sessionId
   revalidatePath(`/programas/${programId}?semana=${weekId}`);
 }
 
-// Copia entrada en calor + bloques + ejercicios de una sesión a otra ya
-// creada (misma estructura, cero contenido tocado — ni pesos ni nada, eso
-// no existe a este nivel). Compartido por duplicateSession (una sesión) y
-// duplicateWeek (todas las sesiones de una semana, una por una) para no
-// mantener esta misma lógica de copiado en dos lugares.
-async function copySessionContents(
-  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
-  fromSessionId: string,
-  toSessionId: string
-) {
-  const { data: warmups } = await supabase
-    .from("warmup_exercises")
-    .select("exercise_id, series, reps, orden")
-    .eq("session_id", fromSessionId);
-
-  if (warmups?.length) {
-    await supabase.from("warmup_exercises").insert(warmups.map((w) => ({ ...w, session_id: toSessionId })));
-  }
-
-  const { data: blocks } = await supabase
-    .from("blocks")
-    .select("id, nombre, color, descanso, descripcion, orden")
-    .eq("session_id", fromSessionId)
-    .order("orden");
-
-  for (const b of blocks ?? []) {
-    const { data: newBlock } = await supabase
-      .from("blocks")
-      .insert({
-        session_id: toSessionId,
-        nombre: b.nombre,
-        color: b.color,
-        descanso: b.descanso,
-        descripcion: b.descripcion,
-        orden: b.orden,
-      })
-      .select("id")
-      .single();
-
-    if (!newBlock) continue;
-
-    const { data: exs } = await supabase
-      .from("block_exercises")
-      .select("exercise_id, series, reps, orden")
-      .eq("block_id", b.id);
-
-    if (exs?.length) {
-      await supabase.from("block_exercises").insert(exs.map((e) => ({ ...e, block_id: newBlock.id })));
-    }
-  }
-}
-
 export async function duplicateSession(programId: string, weekId: string, sessionId: string) {
-  const { supabase } = await requireUser();
-
-  const { data: original } = await supabase
-    .from("sessions")
-    .select("nombre, objetivo, movilidad")
-    .eq("id", sessionId)
-    .single();
-
-  if (!original) return revalidatePath(`/programas/${programId}?semana=${weekId}`);
-
-  // Va al final del orden de la semana (como una sesión nueva) en vez de
-  // "justo después" de la original con orden+1 — eso podía empatar con el
-  // orden de otra sesión ya existente. Si el coach la quiere en otro lugar,
-  // la arrastra desde la lista.
-  const { count } = await supabase.from("sessions").select("id", { count: "exact", head: true }).eq("week_id", weekId);
-
-  const { data: copy } = await supabase
-    .from("sessions")
-    .insert({
-      week_id: weekId,
-      nombre: `${original.nombre} (copia)`,
-      objetivo: original.objetivo,
-      movilidad: original.movilidad,
-      orden: count ?? 0,
-    })
-    .select("id")
-    .single();
-
-  if (copy) await copySessionContents(supabase, sessionId, copy.id);
-
-  revalidatePath(`/programas/${programId}?semana=${weekId}`);
+  const { user } = await requireUser();
+  let errorMsg: string | null = null;
+  try {
+    await getDirectSql().begin(async (tx) => {
+      const [original] = await tx<{ nombre: string }[]>`
+        select se.nombre from sessions se join weeks w on w.id = se.week_id join programs p on p.id = w.program_id
+        where se.id = ${sessionId} and se.week_id = ${weekId} and p.coach_id = ${user.id}`;
+      if (!original) throw new Error("No se encontró la sesión (o no te pertenece).");
+      // Va al final del orden de la semana; si el coach la quiere en otro
+      // lugar, la arrastra desde la lista.
+      const [{ n }] = await tx<{ n: number }[]>`select count(*)::int as n from sessions where week_id = ${weekId}`;
+      await copySessionsExact(tx, [{ sessionId, toWeekId: weekId, nombre: `${original.nombre} (copia)`, orden: n }]);
+    });
+  } catch (err) {
+    errorMsg = (err as Error).message || "No se pudo duplicar la sesión.";
+  }
+  revalidatePath("/", "layout");
+  if (errorMsg) redirect(`/programas/${programId}?semana=${weekId}&error=${encodeURIComponent(errorMsg)}`);
 }
 
-// Duplicar la semana entera: clona cada sesión (con su entrada en calor y
-// sus bloques/ejercicios) en una semana nueva al final del programa. Pensado
-// para periodización — armás la semana 1 con la estructura completa y de
-// ahí en más sólo ajustás pesos/series semana a semana en vez de
-// reconstruir todo de cero.
+// Duplicar la semana entera en una semana nueva al final del programa, con
+// TODO idéntico (ver copySessionsExact). Pensado para periodización: armás
+// la semana 1 completa y de ahí en más sólo ajustás pesos/series.
 export async function duplicateWeek(programId: string, weekId: string) {
-  const { supabase } = await requireUser();
-
-  const { data: sessions } = await supabase
-    .from("sessions")
-    .select("id, nombre, objetivo, movilidad, orden")
-    .eq("week_id", weekId)
-    .order("orden");
-
-  const { data: weeks } = await supabase
-    .from("weeks")
-    .select("numero")
-    .eq("program_id", programId)
-    .order("numero", { ascending: false })
-    .limit(1);
-
-  const nextNumero = (weeks?.[0]?.numero ?? 0) + 1;
-
-  const { data: newWeek } = await supabase
-    .from("weeks")
-    .insert({ program_id: programId, numero: nextNumero })
-    .select("id")
-    .single();
-
-  if (!newWeek) {
-    revalidatePath(`/programas/${programId}`);
-    return;
+  const { user } = await requireUser();
+  let newWeekId: string | null = null;
+  let errorMsg: string | null = null;
+  try {
+    await getDirectSql().begin(async (tx) => {
+      const [ok] = await tx<{ id: string }[]>`
+        select w.id from weeks w join programs p on p.id = w.program_id
+        where w.id = ${weekId} and w.program_id = ${programId} and p.coach_id = ${user.id}`;
+      if (!ok) throw new Error("No se encontró la semana (o no te pertenece).");
+      const [nw] = await tx<{ id: string }[]>`
+        insert into weeks (program_id, numero)
+        select ${programId}, coalesce(max(numero), 0) + 1 from weeks where program_id = ${programId}
+        returning id`;
+      newWeekId = nw.id;
+      const sessions = await tx<{ id: string }[]>`select id from sessions where week_id = ${weekId} order by orden`;
+      await copySessionsExact(tx, sessions.map((s) => ({ sessionId: s.id, toWeekId: nw.id })));
+    });
+  } catch (err) {
+    errorMsg = (err as Error).message || "No se pudo duplicar la semana.";
   }
-
-  for (const s of sessions ?? []) {
-    const { data: newSession } = await supabase
-      .from("sessions")
-      .insert({
-        week_id: newWeek.id,
-        nombre: s.nombre,
-        objetivo: s.objetivo,
-        movilidad: s.movilidad,
-        orden: s.orden,
-      })
-      .select("id")
-      .single();
-
-    if (newSession) await copySessionContents(supabase, s.id, newSession.id);
+  revalidatePath("/", "layout");
+  if (errorMsg || !newWeekId) {
+    redirect(`/programas/${programId}?semana=${weekId}&error=${encodeURIComponent(errorMsg || "No se pudo duplicar la semana.")}`);
   }
-
-  revalidatePath(`/programas/${programId}`);
-  redirect(`/programas/${programId}?semana=${newWeek.id}`);
+  redirect(`/programas/${programId}?semana=${newWeekId}`);
 }
 
 export async function assignGroup(
@@ -355,6 +269,9 @@ export async function updateSession(
       nombre,
       objetivo: String(formData.get("objetivo") || "").trim(),
       movilidad: String(formData.get("movilidad") || "").trim(),
+      // Día de la semana en que el alumno la ve ("Lunes", "Miércoles"…).
+      // Es sólo una guía: si no la hace ese día, la puede hacer otro.
+      ...(formData.has("dia") ? { dia: String(formData.get("dia") || "") || null } : {}),
     })
     .eq("id", sessionId);
 
@@ -375,4 +292,50 @@ export async function updateSession(
   }
 
   redirect(`${sessionUrl}&saved=1`);
+}
+
+// Eliminar una semana entera (con sus sesiones, entrada en calor, bloques y
+// ejercicios). Las semanas siguientes se renumeran para que no queden
+// huecos (si borrás la 2, la 3 pasa a ser la 2), y los alumnos que estaban
+// en una semana posterior se corren uno para atrás, así siguen viendo la
+// misma semana que antes. El historial de entrenamientos ya hechos no se
+// borra (queda guardado con el nombre de la sesión).
+// Conexión directa, todo en una transacción; se chequea que el programa
+// sea del coach.
+export async function deleteWeek(programId: string, weekId: string) {
+  const { user } = await requireUser();
+  const sql = getDirectSql();
+
+  let errorMsg: string | null = null;
+  try {
+    await sql.begin(async (tx) => {
+      const [week] = await tx<{ numero: number }[]>`
+        select w.numero from weeks w join programs p on p.id = w.program_id
+        where w.id = ${weekId} and w.program_id = ${programId} and p.coach_id = ${user.id}
+        for update of w`;
+      if (!week) throw new Error("No se encontró la semana (o no te pertenece).");
+
+      await tx`delete from block_exercises where block_id in (
+        select b.id from blocks b join sessions se on se.id = b.session_id where se.week_id = ${weekId})`;
+      await tx`delete from warmup_exercises where session_id in (select id from sessions where week_id = ${weekId})`;
+      await tx`delete from blocks where session_id in (select id from sessions where week_id = ${weekId})`;
+      await tx`delete from sessions where week_id = ${weekId}`;
+      await tx`delete from weeks where id = ${weekId}`;
+
+      await tx`update weeks set numero = numero - 1 where program_id = ${programId} and numero > ${week.numero}`;
+      await tx`update students set semana_actual = semana_actual - 1
+        where programa_id = ${programId} and coach_id = ${user.id} and semana_actual > ${week.numero}`;
+      // Si alguien estaba justo en la última semana y se borró, que quede en
+      // la nueva última (o en la 1 si no queda ninguna).
+      await tx`update students set semana_actual = greatest(1, coalesce((select max(numero) from weeks where program_id = ${programId}), 1))
+        where programa_id = ${programId} and coach_id = ${user.id}
+          and semana_actual > coalesce((select max(numero) from weeks where program_id = ${programId}), 1)`;
+    });
+  } catch (err) {
+    errorMsg = (err as Error).message || "No se pudo eliminar la semana.";
+  }
+
+  revalidatePath("/", "layout");
+  if (errorMsg) redirect(`/programas/${programId}?error=${encodeURIComponent(errorMsg)}`);
+  redirect(`/programas/${programId}`);
 }

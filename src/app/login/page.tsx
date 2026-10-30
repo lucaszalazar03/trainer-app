@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { SubmitButton } from "@/components/SubmitButton";
+import { WeekBar } from "@/components/WeekBar";
 import { signIn, signUp } from "./actions";
 
 export default function LoginPage() {
@@ -21,37 +22,16 @@ function LoginForm() {
   const confirmed = params.get("confirmed");
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 18,
-        padding: 24,
-      }}
-    >
-      <div className="card" style={{ width: "100%", maxWidth: 380, padding: 32 }}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div className="wordmark" style={{ justifyContent: "center", fontSize: 26 }}>
-            Z-PERFORMANCE
-          </div>
-          <div
-            style={{
-              color: "var(--text-faint)",
-              fontSize: 11,
-              marginTop: 8,
-              fontFamily: "var(--font-mono)",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-            }}
-          >
-            Strength and conditioning
-          </div>
-        </div>
+    <main className="auth">
+      <div className="auth-brand">
+        <WeekBar done={3} total={5} decorative />
+        <div className="auth-word">Z-PERFORMANCE</div>
+        <div className="auth-tag">Strength and conditioning</div>
+        <div className="auth-credit">Lucas Zalazar</div>
+      </div>
 
-        <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 24 }}>
+      <div className="auth-panel">
+        <div className="auth-tabs">
           <TabButton active={tab === "in"} onClick={() => setTab("in")}>
             Ingresar
           </TabButton>
@@ -78,15 +58,13 @@ function LoginForm() {
           </form>
         ) : (
           <>
-            <p style={{ color: "var(--text-faint)", fontSize: 12, margin: "0 0 14px" }}>
-              Creá tu cuenta de alumno. Después de confirmar tu mail ya podés entrar a la app.
-            </p>
+            <p className="auth-note">Creá tu cuenta de alumno. Después de confirmar tu mail ya podés entrar a la app.</p>
             <form action={signUp} style={{ display: "grid" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div className="auth-row2">
                 <Field label="Nombre" name="nombre" type="text" required />
                 <Field label="Apellido" name="apellido" type="text" required />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              <div className="auth-row3">
                 <Field label="Edad" name="edad" type="number" min={1} max={119} inputMode="numeric" />
                 <Field label="Altura (cm)" name="altura_cm" type="number" min={1} max={249} inputMode="numeric" />
                 <Field label="Peso (kg)" name="peso_kg" type="text" inputMode="decimal" />
@@ -100,39 +78,13 @@ function LoginForm() {
           </>
         )}
       </div>
-      <div
-        style={{
-          color: "var(--text-faint)",
-          fontSize: 10,
-          fontFamily: "var(--font-mono)",
-          textTransform: "uppercase",
-          letterSpacing: "0.1em",
-          opacity: 0.6,
-        }}
-      >
-        Lucas Zalazar
-      </div>
     </main>
   );
 }
 
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        flex: 1,
-        padding: "9px 0",
-        border: "none",
-        borderBottom: active ? "2px solid var(--accent)" : "2px solid transparent",
-        marginBottom: -1,
-        fontSize: 13,
-        fontWeight: 600,
-        background: "transparent",
-        color: active ? "var(--text)" : "var(--text-faint)",
-      }}
-    >
+    <button type="button" onClick={onClick} className={`auth-tab ${active ? "active" : ""}`}>
       {children}
     </button>
   );

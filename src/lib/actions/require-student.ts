@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getVerifiedUser } from "@/lib/supabase/verified-user";
+import { asUser } from "@/lib/db/as-user";
+import { makeHybridClient } from "@/lib/db/hybrid-client";
 
 /**
  * Toda pantalla/acción del área del alumno arranca llamando esto.
@@ -13,11 +15,14 @@ export async function requireStudent() {
 
   if (!user) redirect("/login");
 
-  const { data: student } = await supabase
-    .from("students")
-    .select("id, nombre, coach_id, programa_id, semana_actual")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // Conexión directa: antes iba por la API REST de Supabase y, si se
+  // cortaba por timeout, el alumno terminaba en el login con "No pudimos
+  // encontrar tu ficha" aunque su ficha existiera. Si la base falla de
+  // verdad, se tira el error (pantalla de error con reintento) en vez de
+  // mandarlo al login.
+  const [student] = await asUser(user.id, (sql) => sql<
+    { id: string; nombre: string; coach_id: string; programa_id: string | null; semana_actual: number }[]
+  >`select id, nombre, coach_id, programa_id, semana_actual from students where user_id = ${user.id} limit 1`);
 
   if (!student) {
     redirect(
@@ -27,5 +32,5 @@ export async function requireStudent() {
     );
   }
 
-  return { supabase, user, student };
+  return { supabase: makeHybridClient(supabase, user.id), user, student };
 }

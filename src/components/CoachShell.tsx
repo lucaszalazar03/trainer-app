@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getDirectSql } from "@/lib/db/direct";
 import { getVerifiedUser } from "@/lib/supabase/verified-user";
 import { signOut } from "@/lib/actions/auth";
 import { Icon } from "./Icon";
@@ -28,7 +29,10 @@ export default async function CoachShell({
 
   let nombre = user?.email ?? "";
   if (user) {
-    const { data: coach } = await supabase.from("coaches").select("nombre").eq("id", user.id).single();
+    // Conexión directa; si falla, se muestra el email (no rompe la página).
+    const [coach] = await getDirectSql()<{ nombre: string | null }[]>`select nombre from coaches where id = ${user.id}`.catch(
+      () => [] as { nombre: string | null }[]
+    );
     if (coach?.nombre) nombre = coach.nombre;
   }
 

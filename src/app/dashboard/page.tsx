@@ -1,6 +1,7 @@
 import Link from "next/link";
 import CoachShell from "@/components/CoachShell";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/actions/require-user";
+import { asUser } from "@/lib/db/as-user";
 import { TIMEZONE, inicioDeSemanaArgentina } from "@/lib/date";
 
 function haceCuanto(fechaIso: string): string {
@@ -14,52 +15,36 @@ function haceCuanto(fechaIso: string): string {
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
+  const { user } = await requireUser();
   const inicioSemana = inicioDeSemanaArgentina();
 
-  // Las cinco primeras consultas no dependen entre sí — en paralelo. La
-  // sexta (última actividad por alumno activo) sí depende de los ids de la
-  // primera, así que va aparte, después.
-  const [
-    { data: activeStudents },
-    { count: programas },
-    { count: equipos },
-    { data: checkinsPendientes },
-    { data: recentLogs },
-    { count: entrenamientosSemana },
-  ] = await Promise.all([
-    supabase.from("students").select("id, nombre").eq("estado", "Activo"),
-    // Sólo cuenta los programas de la biblioteca general, no las rutinas
-    // personales armadas dentro del perfil de cada alumno.
-    supabase.from("programs").select("*", { count: "exact", head: true }).is("owner_student_id", null),
-    supabase.from("teams").select("*", { count: "exact", head: true }),
-    supabase
-      .from("checkins")
-      .select("id, fecha, energia, dolor, sueno, students(nombre)")
-      .eq("visto", false)
-      .order("fecha", { ascending: false })
-      .limit(5),
-    // Feed de "quién entrenó últimamente" para tener el pulso de toda la
-    // base de alumnos sin tener que entrar uno por uno.
-    supabase
-      .from("training_logs")
-      .select("id, created_at, session_nombre, student_id, students(nombre)")
-      .order("created_at", { ascending: false })
-      .limit(8),
-    supabase.from("training_logs").select("*", { count: "exact", head: true }).gte("created_at", inicioSemana.toISOString()),
-  ]);
-
-  const activeIds = (activeStudents ?? []).map((s) => s.id);
-  // Última fecha de entrenamiento por alumno activo — una sola consulta
-  // (student_id + created_at, liviana) en vez de una por alumno, reducida
-  // acá abajo a "la más reciente por id" (ya viene ordenada desc).
-  const { data: lastLogs } = activeIds.length
-    ? await supabase
-        .from("training_logs")
-        .select("student_id, created_at")
-        .in("student_id", activeIds)
-        .order("created_at", { ascending: false })
-    : { data: [] as { student_id: string; created_at: string }[] };
+  // Todo por conexión directa con las reglas de seguridad del usuario (ver
+  // as-user.ts), en una sola transacción.
+  type Nombre = { nombre: string } | null;
+  const [activeStudents, [{ programas, equipos, entrenamientosSemana }], checkinsPendientes, recentLogs, lastLogs] = await asUser(
+    user.id,
+    (sql) =>
+      Promise.all([
+        sql<{ id: string; nombre: string }[]>`select id, nombre from students where estado = 'Activo'`,
+        sql<{ programas: number; equipos: number; entrenamientosSemana: number }[]>`
+          select (select count(*)::int from programs where owner_student_id is null) as programas,
+                 (select count(*)::int from teams) as equipos,
+                 (select count(*)::int from training_logs where created_at >= ${inicioSemana.toISOString()}) as "entrenamientosSemana"`,
+        sql<{ id: string; fecha: string; energia: number | null; dolor: number | null; sueno: number | null; students: Nombre }[]>`
+          select c.id, to_json(c.fecha)#>>'{}' as fecha, c.energia, c.dolor, c.sueno, json_build_object('nombre', s.nombre) as students
+          from checkins c left join students s on s.id = c.student_id
+          where c.visto = false order by c.fecha desc limit 5`,
+        sql<{ id: string; created_at: string; session_nombre: string | null; student_id: string; students: Nombre }[]>`
+          select t.id, to_json(t.created_at)#>>'{}' as created_at, t.session_nombre, t.student_id, json_build_object('nombre', s.nombre) as students
+          from training_logs t left join students s on s.id = t.student_id
+          order by t.created_at desc limit 8`,
+        // Última actividad de cada alumno activo (una fila por alumno).
+        sql<{ student_id: string; created_at: string }[]>`
+          select distinct on (t.student_id) t.student_id, to_json(t.created_at)#>>'{}' as created_at
+          from training_logs t join students s on s.id = t.student_id
+          where s.estado = 'Activo' order by t.student_id, t.created_at desc`,
+      ])
+  );
 
   const ultimaActividad = new Map<string, string>();
   for (const row of lastLogs ?? []) {
@@ -93,30 +78,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid g-stats" style={{ marginBottom: 22 }}>
-        <div className="card stat">
-          <div className="k">Alumnos activos</div>
-          <div className="v">{activeStudents?.length ?? 0}</div>
-        </div>
-        <div className="card stat">
-          <div className="k">Entrenamientos esta semana</div>
-          <div className="v accent">{entrenamientosSemana ?? 0}</div>
-        </div>
-        <div className="card stat">
-          <div className="k">Programas</div>
-          <div className="v blue">{programas ?? 0}</div>
-        </div>
-        <div className="card stat">
-          <div className="k">Equipos</div>
-          <div className="v">{equipos ?? 0}</div>
-        </div>
-        <div className="card stat">
-          <div className="k">Check-ins sin ver</div>
-          <div className={`v ${pendientes > 0 ? "warn" : ""}`}>{pendientes}</div>
-        </div>
-      </div>
-
-      <div className="grid g-2" style={{ marginBottom: 20 }}>
+      <div className="grid g-2" style={{ marginBottom: 24 }}>
         <div className="card card-pad">
           <div className="section-h" style={{ marginTop: 0 }}>
             <h3>Check-ins recientes sin ver</h3>
@@ -124,25 +86,21 @@ export default async function DashboardPage() {
           {pendientes === 0 ? (
             <div className="empty">No hay check-ins pendientes por revisar.</div>
           ) : (
-            <div style={{ display: "grid", gap: 8 }}>
+            <div className="row-list">
               {checkinsPendientes!.map((c) => {
                 const atencion = (c.energia ?? 3) <= 2 || (c.dolor ?? 1) >= 4 || (c.sueno ?? 3) <= 2;
                 return (
-                  <div
-                    key={c.id}
-                    className="list-row"
-                    style={{ justifyContent: "space-between", background: "var(--surface-2)", borderRadius: "var(--radius-s)" }}
-                  >
-                    <span style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 600, fontSize: 13.5 }}>
+                  <div key={c.id} className="list-row" style={{ justifyContent: "space-between" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 600, fontSize: 15 }}>
                       {atencion && (
                         <span
                           title="Valores para prestar atención"
-                          style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--warn)", flex: "0 0 auto" }}
+                          style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--plate-yellow)", flex: "0 0 auto" }}
                         />
                       )}
                       {(c.students as unknown as { nombre: string } | null)?.nombre ?? "Alumno"}
                     </span>
-                    <span style={{ color: "var(--text-dim)", fontSize: 12.5 }}>
+                    <span style={{ color: "var(--text-dim)", fontSize: 14 }}>
                       Energía {c.energia} · Dolor {c.dolor} · Sueño {c.sueno}
                     </span>
                   </div>
@@ -159,20 +117,15 @@ export default async function DashboardPage() {
           {sinActividad.length === 0 ? (
             <div className="empty">Todos tus alumnos activos entrenaron esta última semana.</div>
           ) : (
-            <div style={{ display: "grid", gap: 8 }}>
+            <div className="row-list">
               {sinActividad.slice(0, 8).map((s) => (
-                <Link
-                  key={s.id}
-                  href={`/alumnos/${s.id}`}
-                  className="list-row"
-                  style={{ justifyContent: "space-between", background: "var(--surface-2)", borderRadius: "var(--radius-s)" }}
-                >
-                  <span style={{ fontWeight: 600, fontSize: 13.5 }}>{s.nombre}</span>
-                  <span style={{ color: "var(--warn)", fontSize: 12.5 }}>{s.ultima ? haceCuanto(s.ultima) : "nunca entrenó"}</span>
+                <Link key={s.id} href={`/alumnos/${s.id}`} className="list-row" style={{ justifyContent: "space-between" }}>
+                  <span style={{ fontWeight: 600, fontSize: 15 }}>{s.nombre}</span>
+                  <span style={{ color: "var(--warn)", fontSize: 14, fontWeight: 600 }}>{s.ultima ? haceCuanto(s.ultima) : "nunca entrenó"}</span>
                 </Link>
               ))}
               {sinActividad.length > 8 && (
-                <div style={{ fontSize: 11.5, color: "var(--text-faint)", textAlign: "center", marginTop: 2 }}>
+                <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 6 }}>
                   +{sinActividad.length - 8} más
                 </div>
               )}
@@ -181,21 +134,44 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="card card-pad" style={{ maxWidth: 620 }}>
+      <div className="stat-strip">
+        <div className="stat">
+          <div className="v">{activeStudents?.length ?? 0}</div>
+          <div className="k">Alumnos activos</div>
+        </div>
+        <div className="stat">
+          <div className="v">{entrenamientosSemana ?? 0}</div>
+          <div className="k">Entrenamientos esta semana</div>
+        </div>
+        <div className="stat">
+          <div className="v">{programas ?? 0}</div>
+          <div className="k">Programas</div>
+        </div>
+        <div className="stat">
+          <div className="v">{equipos ?? 0}</div>
+          <div className="k">Equipos</div>
+        </div>
+        <div className="stat">
+          <div className={`v ${pendientes > 0 ? "warn" : ""}`}>{pendientes}</div>
+          <div className="k">Check-ins sin ver</div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 700 }}>
         <div className="section-h" style={{ marginTop: 0 }}>
           <h3>Actividad reciente</h3>
         </div>
         {!recentLogs || recentLogs.length === 0 ? (
           <div className="empty">Todavía no hay entrenamientos registrados.</div>
         ) : (
-          <div style={{ display: "grid", gap: 4 }}>
+          <div className="row-list">
             {recentLogs.map((l) => (
               <Link key={l.id} href={`/alumnos/${l.student_id}`} className="list-row" style={{ justifyContent: "space-between" }}>
-                <span style={{ fontSize: 13 }}>
-                  <strong style={{ fontWeight: 600 }}>{(l.students as unknown as { nombre: string } | null)?.nombre ?? "Alumno"}</strong>
-                  <span style={{ color: "var(--text-faint)" }}> completó &quot;{l.session_nombre ?? "una sesión"}&quot;</span>
+                <span style={{ fontSize: 15 }}>
+                  <strong style={{ fontWeight: 700 }}>{(l.students as unknown as { nombre: string } | null)?.nombre ?? "Alumno"}</strong>
+                  <span style={{ color: "var(--text-dim)" }}> completó &quot;{l.session_nombre ?? "una sesión"}&quot;</span>
                 </span>
-                <span style={{ color: "var(--text-faint)", fontSize: 12, flex: "0 0 auto" }}>{haceCuanto(l.created_at)}</span>
+                <span style={{ color: "var(--text-dim)", fontSize: 13.5, flex: "0 0 auto" }}>{haceCuanto(l.created_at)}</span>
               </Link>
             ))}
           </div>

@@ -13,9 +13,8 @@ const FADE_MS = 350;
  * no se vuelve a montar, así que no reaparece en cada click — igual que una
  * splash nativa, que se ve una vez por arranque y no en cada pantalla.
  *
- * Antes llevaba un cuadradito de acento al lado del nombre — se sacó (ver
- * comentario en globals.css) y quedó solo el wordmark con su subrayado
- * animado, más una bajada chica para que la pantalla no se sienta vacía.
+ * El wordmark con su barra animada, más una bajada chica para que la
+ * pantalla no se sienta vacía.
  */
 export function SplashScreen() {
   const [phase, setPhase] = useState<"visible" | "fading" | "hidden">("visible");
@@ -36,9 +35,7 @@ export function SplashScreen() {
 
   return (
     <div className={`splash-screen ${phase === "fading" ? "fading" : ""}`} aria-hidden="true">
-      <div className="splash-word">
-        <span className="z">Z</span>-PERFORMANCE
-      </div>
+      <div className="splash-word">Z-PERFORMANCE</div>
       <div className="splash-tagline">Strength &amp; Conditioning</div>
     </div>
   );

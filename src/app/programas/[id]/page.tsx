@@ -5,70 +5,105 @@ import { Crumbs } from "@/components/Crumbs";
 import { Icon } from "@/components/Icon";
 import { SubmitButton } from "@/components/SubmitButton";
 import { SessionList } from "@/components/SessionList";
-import { createClient } from "@/lib/supabase/server";
-import { addWeek, addSession, deleteSession, duplicateSession, duplicateWeek, reorderSessions } from "../actions";
+import { requireUser } from "@/lib/actions/require-user";
+import { getDirectSql } from "@/lib/db/direct";
+import { friendlyDbError } from "@/lib/db/friendly-error";
+import { addWeek, addSession, deleteSession, duplicateSession, duplicateWeek, reorderSessions, deleteWeek } from "../actions";
+import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 
 export default async function ProgramaDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ semana?: string }>;
+  searchParams: Promise<{ semana?: string; error?: string }>;
 }) {
   const { id } = await params;
-  const { semana } = await searchParams;
+  const { semana, error: errorParam } = await searchParams;
 
-  const supabase = await createClient();
+  const { user } = await requireUser();
+  const sql = getDirectSql();
 
-  // program y weeks sólo necesitan el id del programa — en paralelo.
-  const [{ data: program }, { data: weeks }] = await Promise.all([
-    supabase
-      .from("programs")
-      .select("id, nombre, objetivo, nivel, duracion_semanas, owner_student_id")
-      .eq("id", id)
-      .maybeSingle(),
-    supabase.from("weeks").select("id, numero").eq("program_id", id).order("numero"),
-  ]);
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(id)) notFound();
+
+  // Antes esta pantalla leía todo por supabase-js (API REST de Supabase),
+  // que en el plan chico se corta por timeout: la rutina "no abría" (404 o
+  // pantalla rota) aunque los datos estuvieran bien. Ahora va por conexión
+  // directa en UNA sola tanda de consultas; como no pasa por RLS, todo se
+  // filtra a mano por programs.coach_id = user.id. Si algo falla, se muestra
+  // un aviso con "Reintentar" en vez de romper la página.
+  type Program = { id: string; nombre: string; objetivo: string | null; nivel: string | null; duracion_semanas: number | null; owner_student_id: string | null };
+  type Sess = { id: string; nombre: string; objetivo: string | null; dia: string | null; bloques: number; ejercicios: number };
+  let program = null as Program | null;
+  let weeks: { id: string; numero: number }[] = [];
+  let owner = null as { id: string; nombre: string } | null;
+  let alumnos: { nombre: string; semana_actual: number | null }[] = [];
+  let sessions: Sess[] = [];
+  let activeWeek = undefined as { id: string; numero: number } | undefined;
+  let loadError: string | null = null;
+
+  try {
+    const [progRows, weekRows, ownerRows, alumnoRows] = await Promise.all([
+      sql<Program[]>`
+        select id, nombre, objetivo, nivel, duracion_semanas, owner_student_id
+        from programs where id = ${id} and coach_id = ${user.id}
+      `,
+      sql<{ id: string; numero: number }[]>`
+        select w.id, w.numero from weeks w join programs p on p.id = w.program_id
+        where w.program_id = ${id} and p.coach_id = ${user.id} order by w.numero
+      `,
+      sql<{ id: string; nombre: string }[]>`
+        select s.id, s.nombre from programs p join students s on s.id = p.owner_student_id
+        where p.id = ${id} and p.coach_id = ${user.id}
+      `,
+      sql<{ nombre: string; semana_actual: number | null }[]>`
+        select nombre, semana_actual from students where programa_id = ${id} and coach_id = ${user.id} order by nombre
+      `,
+    ]);
+    program = progRows[0] ?? null;
+    weeks = weekRows;
+    owner = ownerRows[0] ?? null;
+    alumnos = alumnoRows;
+    activeWeek = weeks.find((w) => w.id === semana) ?? weeks[weeks.length - 1];
+
+    if (program && activeWeek) {
+      // Sesiones de la semana con sus cantidades de bloques y ejercicios,
+      // todo en una sola consulta.
+      sessions = await sql<Sess[]>`
+        select se.id, se.nombre, se.objetivo, se.dia,
+          (select count(*)::int from blocks b where b.session_id = se.id) as bloques,
+          (select count(*)::int from block_exercises be join blocks b on b.id = be.block_id where b.session_id = se.id) as ejercicios
+        from sessions se where se.week_id = ${activeWeek.id}
+        order by se.orden
+      `;
+    }
+  } catch (err) {
+    loadError = friendlyDbError(err) ?? "No se pudo cargar la rutina.";
+  }
+
+  if (loadError) {
+    return (
+      <CoachShell active="/programas">
+        <Crumbs items={[{ label: "Programas", href: "/programas" }, { label: "Rutina" }]} />
+        <div className="banner danger" style={{ maxWidth: 600 }}>
+          {loadError} Tus cambios guardados no se perdieron.
+        </div>
+        <Link href={`/programas/${id}${semana ? `?semana=${semana}` : ""}`} className="btn primary">
+          Reintentar
+        </Link>
+      </CoachShell>
+    );
+  }
 
   if (!program) notFound();
 
   const isPersonal = !!program.owner_student_id;
-  const { data: owner } = isPersonal
-    ? await supabase.from("students").select("id, nombre").eq("id", program.owner_student_id!).maybeSingle()
-    : { data: null };
-
-  const activeWeek = weeks?.find((w) => w.id === semana) ?? weeks?.[weeks.length - 1];
-
-  // grupoSemana y sessions dependen de activeWeek pero no entre sí.
-  const [{ data: grupoSemana }, { data: sessions }] = await Promise.all([
-    activeWeek
-      ? supabase.from("students").select("nombre").eq("programa_id", id).eq("semana_actual", activeWeek.numero)
-      : Promise.resolve({ data: [] as { nombre: string }[] }),
-    activeWeek
-      ? supabase.from("sessions").select("id, nombre, objetivo").eq("week_id", activeWeek.id).order("orden")
-      : Promise.resolve({ data: [] as { id: string; nombre: string; objetivo: string | null }[] }),
-  ]);
-
-  const sessionIds = sessions?.map((s) => s.id) ?? [];
-  const counts: Record<string, { bloques: number; ejercicios: number }> = {};
-  if (sessionIds.length) {
-    const { data: blocks } = await supabase.from("blocks").select("id, session_id").in("session_id", sessionIds);
-
-    for (const b of blocks ?? []) {
-      counts[b.session_id] ??= { bloques: 0, ejercicios: 0 };
-      counts[b.session_id].bloques += 1;
-    }
-
-    const blockIds = blocks?.map((b) => b.id) ?? [];
-    if (blockIds.length) {
-      const { data: exs } = await supabase.from("block_exercises").select("id, block_id").in("block_id", blockIds);
-      const blockToSession = Object.fromEntries((blocks ?? []).map((b) => [b.id, b.session_id]));
-      for (const e of exs ?? []) {
-        const sid = blockToSession[e.block_id];
-        if (sid) counts[sid].ejercicios += 1;
-      }
-    }
-  }
+  const usuarios = alumnos;
+  const grupoSemana = activeWeek ? alumnos.filter((a) => a.semana_actual === activeWeek!.numero) : [];
+  const counts: Record<string, { bloques: number; ejercicios: number }> = Object.fromEntries(
+    sessions.map((s) => [s.id, { bloques: s.bloques, ejercicios: s.ejercicios }])
+  );
 
   return (
     <CoachShell active={isPersonal ? "/alumnos" : "/programas"}>
@@ -102,8 +137,22 @@ export default async function ProgramaDetailPage({
         </div>
       </div>
 
+      {usuarios.length > 1 && (
+        <div className="banner" style={{ fontSize: 12.5, marginBottom: 14, color: "var(--text-dim)" }}>
+          <Icon name="users" size={13} /> Esta rutina la usan {usuarios.length} alumnos:{" "}
+          <strong style={{ color: "var(--text)" }}>{usuarios.map((u) => u.nombre).join(", ")}</strong>. Lo que cambies acá se
+          actualiza para todos.
+        </div>
+      )}
+
+      {errorParam && (
+        <div className="banner danger" style={{ maxWidth: 600 }}>
+          {errorParam}
+        </div>
+      )}
+
       <div className="week-pills">
-        {(weeks ?? []).map((w) => (
+        {weeks.map((w) => (
           <Link key={w.id} href={`/programas/${id}?semana=${w.id}`} className={`week-pill ${w.id === activeWeek?.id ? "active" : ""}`}>
             Semana {w.numero}
           </Link>
@@ -113,10 +162,8 @@ export default async function ProgramaDetailPage({
       {activeWeek && (
         <>
           <div className="section-h" style={{ marginTop: 0 }}>
-            <h3 style={{ textTransform: "none", fontSize: 15, letterSpacing: 0, color: "var(--text)" }}>
-              Sesiones — Semana {activeWeek.numero}
-            </h3>
-            <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <h3>Sesiones — Semana {activeWeek.numero}</h3>
+            <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
               {!isPersonal && (
                 <Link href={`/programas/${id}/agrupar?semana=${activeWeek.id}`} className="link-btn">
                   <Icon name="users" size={13} />
@@ -144,6 +191,16 @@ export default async function ProgramaDetailPage({
                   </form>
                 </>
               )}
+              <form action={deleteWeek.bind(null, id, activeWeek.id)}>
+                <ConfirmSubmitButton
+                  className="link-btn"
+                  style={{ color: "var(--danger)" }}
+                  confirmMessage={`¿Eliminar la Semana ${activeWeek.numero} con todas sus sesiones? No se puede deshacer. (El historial de entrenamientos ya hechos se conserva.)`}
+                >
+                  <Icon name="trash" size={13} />
+                  Eliminar semana
+                </ConfirmSubmitButton>
+              </form>
               <form action={addSession.bind(null, id, activeWeek.id)}>
                 <SubmitButton className="link-btn">
                   <Icon name="plus" size={13} />
@@ -173,6 +230,7 @@ export default async function ProgramaDetailPage({
                   id: s.id,
                   nombre: s.nombre,
                   objetivo: s.objetivo,
+                  dia: s.dia,
                   bloques: counts[s.id]?.bloques ?? 0,
                   ejercicios: counts[s.id]?.ejercicios ?? 0,
                   editHref: `/programas/${id}/sesiones/${s.id}?semana=${activeWeek.id}`,
